@@ -1,0 +1,170 @@
+/* SystemAction display names */
+"Maximize Window" = "Maximize Window";
+"Center Window" = "Center Window";
+"Toggle Fullscreen" = "Toggle Fullscreen";
+"Minimize Window" = "Minimize Window";
+"Volume Up" = "Volume Up";
+"Volume Down" = "Volume Down";
+"Mute" = "Mute";
+"Brightness Up" = "Brightness Up";
+"Brightness Down" = "Brightness Down";
+"Show Desktop" = "Show Desktop";
+"Mission Control" = "Mission Control";
+"App Exposé" = "App Exposé";
+"Spotlight" = "Spotlight";
+"Force Quit" = "Force Quit";
+"Lock Screen" = "Lock Screen";
+"Sleep Display" = "Sleep Display";
+
+/* GestureAction.Kind display names */
+"Keyboard Shortcut" = "Keyboard Shortcut";
+"Open URL" = "Open URL";
+"Open Application" = "Open Application";
+"Run Shell Script" = "Run Shell Script";
+"Run AppleScript" = "Run AppleScript";
+"System Action" = "System Action";
+
+/* GestureDirection display names */
+"Up" = "Up";
+"Down" = "Down";
+"Left" = "Left";
+"Right" = "Right";
+"Up-Left" = "Up-Left";
+"Up-Right" = "Up-Right";
+"Down-Left" = "Down-Left";
+"Down-Right" = "Down-Right";
+
+/* TriggerButton display names */
+"Right Mouse" = "Right Mouse";
+"Middle Mouse" = "Middle Mouse";
+"Button 4" = "Button 4";
+"Button 5" = "Button 5";
+"Edge Scroll" = "Edge Scroll";
+
+/* ScreenEdge / ScrollDirection */
+"Top" = "Top";
+"Bottom" = "Bottom";
+"Scroll Up" = "Scroll Up";
+"Scroll Down" = "Scroll Down";
+
+/* GestureLibraryView */
+"Gesture Library" = "Gesture Library";
+"Done" = "Done";
+"Category" = "Category";
+"Search" = "Search";
+"All" = "All";
+"Added" = "Added";
+"Add" = "Add";
+
+/* ContentView */
+"Gestures" = "Gestures";
+"Delete" = "Delete";
+"Library" = "Library";
+"Stop" = "Stop";
+"Start" = "Start";
+"Monitoring" = "Monitoring";
+"Stopped" = "Stopped";
+"Settings" = "Settings";
+"No Gesture Selected" = "No Gesture Selected";
+"Add or select a rule to customize your gestures." = "Add or select a rule to customize your gestures.";
+
+/* MenuBarContentView */
+"Open Strokly" = "Open Strokly";
+"Stop Monitoring" = "Stop Monitoring";
+"Start Monitoring" = "Start Monitoring";
+"Grant Accessibility Access" = "Grant Accessibility Access";
+"Settings..." = "Settings...";
+"Quit Strokly" = "Quit Strokly";
+
+/* RuleEditorView */
+"Enabled" = "Enabled";
+"Show Tip on Trigger" = "Show Tip on Trigger";
+"Name" = "Name";
+"Trigger" = "Trigger";
+"Gesture" = "Gesture";
+"Use left mouse button to draw gestures in the canvas above." = "Use left mouse button to draw gestures in the canvas above.";
+"Strictness" = "Strictness";
+"Practice Mode" = "Practice Mode";
+"Draw in the canvas above to test recognition." = "Draw in the canvas above to test recognition.";
+"Modifier Keys" = "Modifier Keys";
+"Hold these keys while gesturing (optional)." = "Hold these keys while gesturing (optional).";
+"Applies To" = "Applies To";
+"All Apps" = "All Apps";
+"Specific App" = "Specific App";
+"Action" = "Action";
+"Focus Visible Window Before Action" = "Focus Visible Window Before Action";
+"Type" = "Type";
+"Key" = "Key";
+"URL" = "URL";
+"Category Name" = "Category Name";
+"Enter category name" = "Enter category name";
+"Select an app..." = "Select an app...";
+"Use Frontmost App" = "Use Frontmost App";
+"No app selected" = "No app selected";
+"System Action" = "System Action";
+"Window" = "Window";
+"Media" = "Media";
+"System" = "System";
+"Rule" = "Rule";
+"Scope" = "Scope";
+"Application" = "Application";
+"Screen Edge" = "Screen Edge";
+"Direction" = "Direction";
+"Move the mouse to the screen edge, then scroll to trigger." = "Move the mouse to the screen edge, then scroll to trigger.";
+
+/* SettingsView */
+"General" = "General";
+"Data" = "Data";
+"Startup" = "Startup";
+"Launch at Login" = "Launch at Login";
+"Auto-start Monitoring" = "Auto-start Monitoring";
+"Language" = "Language";
+"Changing language requires restarting the app." = "Changing language requires restarting the app.";
+"About" = "About";
+"Version" = "Version";
+"Github" = "Github";
+"Rules" = "Rules";
+"Export Rules..." = "Export Rules...";
+"Import Rules..." = "Import Rules...";
+"Reset to Defaults" = "Reset to Defaults";
+"Logging" = "Logging";
+"Log Level" = "Log Level";
+"Write Log File" = "Write Log File";
+"Log File" = "Log File";
+"Open Log File" = "Open Log File";
+"Off" = "Off";
+"Error" = "Error";
+"Warning" = "Warning";
+"Info" = "Info";
+"Debug" = "Debug";
+"Trace" = "Trace";
+
+/* PermissionGuideView */
+"Ready to Go!" = "Ready to Go!";
+"Welcome to Strokly" = "Welcome to Strokly";
+"Accessibility permission granted. You can now use mouse gestures." = "Accessibility permission granted. You can now use mouse gestures.";
+"Strokly needs Accessibility permission to detect mouse gestures and execute actions." = "Strokly needs Accessibility permission to detect mouse gestures and execute actions.";
+"Click the button below to open System Settings" = "Click the button below to open System Settings";
+"Open Accessibility Settings" = "Open Accessibility Settings";
+"Enable Strokly in Privacy & Security → Accessibility" = "Enable Strokly in Privacy & Security → Accessibility";
+"Waiting for permission..." = "Waiting for permission...";
+"Start Using Strokly" = "Start Using Strokly";
+"Skip for Now" = "Skip for Now";
+
+/* AppSettingsStore */
+"Follow System" = "Follow System";
+
+/* GestureAction displaySummary */
+"Unassigned shortcut" = "Unassigned shortcut";
+"Unassigned target" = "Unassigned target";
+"No shell script" = "No shell script";
+"Shell script" = "Shell script";
+"No AppleScript" = "No AppleScript";
+"No system action" = "No system action";
+
+/* Categories */
+"Navigation" = "Navigation";
+"Clipboard" = "Clipboard";
+"Tabs" = "Tabs";
+"Applications" = "Applications";
+"Custom" = "Custom";

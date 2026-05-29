@@ -1,0 +1,171 @@
+/* SystemAction display names */
+"Maximize Window" = "最大化窗口";
+"Center Window" = "居中窗口";
+"Toggle Fullscreen" = "切换全屏";
+"Minimize Window" = "最小化窗口";
+"Volume Up" = "增加音量";
+"Volume Down" = "降低音量";
+"Mute" = "静音";
+"Brightness Up" = "增加亮度";
+"Brightness Down" = "降低亮度";
+"Show Desktop" = "显示桌面";
+"Mission Control" = "任务控制";
+"App Exposé" = "应用窗口";
+"Spotlight" = "聚焦搜索";
+"Force Quit" = "强制退出";
+"Lock Screen" = "锁定屏幕";
+"Sleep Display" = "睡眠显示器";
+
+/* GestureAction.Kind display names */
+"Keyboard Shortcut" = "键盘快捷键";
+"Open URL" = "打开链接";
+"Open Application" = "打开应用";
+"Run Shell Script" = "运行脚本";
+"Run AppleScript" = "运行 AppleScript";
+"System Action" = "系统操作";
+
+/* GestureDirection display names */
+"Up" = "上";
+"Down" = "下";
+"Left" = "左";
+"Right" = "右";
+"Up-Left" = "左上";
+"Up-Right" = "右上";
+"Down-Left" = "左下";
+"Down-Right" = "右下";
+
+/* TriggerButton display names */
+"Right Mouse" = "右键";
+"Middle Mouse" = "中键";
+"Button 4" = "按键 4";
+"Button 5" = "按键 5";
+"Edge Scroll" = "边缘滚动";
+
+/* ScreenEdge / ScrollDirection */
+"Top" = "顶部";
+"Bottom" = "底部";
+"Left" = "左侧";
+"Right" = "右侧";
+"Scroll Up" = "向上滚动";
+"Scroll Down" = "向下滚动";
+
+/* GestureLibraryView */
+"Gesture Library" = "手势库";
+"Done" = "完成";
+"Category" = "分类";
+"Search" = "搜索";
+"All" = "全部";
+"Added" = "已添加";
+"Add" = "添加";
+
+/* ContentView */
+"Gestures" = "手势";
+"Delete" = "删除";
+"Library" = "手势库";
+"Stop" = "停止";
+"Start" = "启动";
+"Monitoring" = "监听中";
+"Stopped" = "已停止";
+"Settings" = "设置";
+"No Gesture Selected" = "未选手势";
+"Add or select a rule to customize your gestures." = "添加或选择一条规则来自定义手势。";
+
+/* MenuBarContentView */
+"Open Strokly" = "打开 Strokly";
+"Stop Monitoring" = "停止监听";
+"Start Monitoring" = "开始监听";
+"Grant Accessibility Access" = "授权辅助功能";
+"Settings..." = "设置...";
+"Quit Strokly" = "退出 Strokly";
+
+/* RuleEditorView */
+"Enabled" = "启用";
+"Show Tip on Trigger" = "触发时显示提示";
+"Name" = "名称";
+"Trigger" = "触发方式";
+"Gesture" = "手势";
+"Use left mouse button to draw gestures in the canvas above." = "使用左键在上方画布中绘制手势。";
+"Strictness" = "严格度";
+"Practice Mode" = "练习模式";
+"Draw in the canvas above to test recognition." = "在上方画布中绘制以测试识别效果。";
+"Modifier Keys" = "修饰键";
+"Hold these keys while gesturing (optional)." = "手势时按住这些键（可选）。";
+"Applies To" = "适用范围";
+"All Apps" = "所有应用";
+"Specific App" = "特定应用";
+"Action" = "动作";
+"Focus Visible Window Before Action" = "执行前聚焦鼠标所在可见窗口";
+"Type" = "类型";
+"Key" = "按键";
+"URL" = "链接";
+"Category Name" = "分类名称";
+"Enter category name" = "输入分类名称";
+"Select an app..." = "选择应用...";
+"Use Frontmost App" = "使用当前应用";
+"No app selected" = "未选择应用";
+"Window" = "窗口";
+"Media" = "媒体";
+"System" = "系统";
+"Rule" = "规则";
+"Scope" = "作用域";
+"Application" = "应用";
+"Screen Edge" = "屏幕边缘";
+"Direction" = "方向";
+"Move the mouse to the screen edge, then scroll to trigger." = "将鼠标移到屏幕边缘，然后滚动以触发。";
+
+/* SettingsView */
+"General" = "通用";
+"Data" = "数据";
+"Startup" = "启动";
+"Launch at Login" = "登录时启动";
+"Auto-start Monitoring" = "自动开始监听";
+"Language" = "语言";
+"Changing language requires restarting the app." = "切换语言需要重启应用。";
+"About" = "关于";
+"Version" = "版本";
+"Github" = "Github";
+"Rules" = "规则";
+"Export Rules..." = "导出规则...";
+"Import Rules..." = "导入规则...";
+"Reset to Defaults" = "恢复默认";
+"Logging" = "日志";
+"Log Level" = "日志等级";
+"Write Log File" = "写入日志文件";
+"Log File" = "日志文件";
+"Open Log File" = "打开日志文件";
+"Off" = "关闭";
+"Error" = "错误";
+"Warning" = "警告";
+"Info" = "信息";
+"Debug" = "调试";
+"Trace" = "跟踪";
+
+/* PermissionGuideView */
+"Ready to Go!" = "准备就绪！";
+"Welcome to Strokly" = "欢迎使用 Strokly";
+"Accessibility permission granted. You can now use mouse gestures." = "已授予辅助功能权限。现在可以使用鼠标手势了。";
+"Strokly needs Accessibility permission to detect mouse gestures and execute actions." = "Strokly 需要辅助功能权限来检测鼠标手势和执行动作。";
+"Click the button below to open System Settings" = "点击下方按钮打开系统设置";
+"Open Accessibility Settings" = "打开辅助功能设置";
+"Enable Strokly in Privacy & Security → Accessibility" = "在隐私与安全 → 辅助功能中启用 Strokly";
+"Waiting for permission..." = "等待授权...";
+"Start Using Strokly" = "开始使用 Strokly";
+"Skip for Now" = "暂时跳过";
+
+/* AppSettingsStore */
+"Follow System" = "跟随系统";
+
+/* GestureAction displaySummary */
+"Unassigned shortcut" = "未设置快捷键";
+"Unassigned target" = "未设置目标";
+"No shell script" = "无脚本";
+"Shell script" = "Shell 脚本";
+"No AppleScript" = "无 AppleScript";
+"No system action" = "无系统操作";
+
+/* Categories */
+"Navigation" = "导航";
+"Clipboard" = "剪贴板";
+"Tabs" = "标签页";
+"Applications" = "应用";
+"Custom" = "自定义";

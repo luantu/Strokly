@@ -1,0 +1,343 @@
+import CoreGraphics
+import Foundation
+import StroklyCore
+
+@main
+struct StroklyCoreChecks {
+    @MainActor
+    static func main() throws {
+        try testRecognizesDirectionSequenceAndCollapsesJitter()
+        try testReturnsNilWhenPointerDoesNotTravelFarEnough()
+        try testParsesCompactSignatureText()
+        try testTemplateNormalizationIgoresPositionAndScale()
+        try testTemplateMatcherScoresSimilarShapesLowerThanDifferentShapes()
+        try testAppSpecificRuleWinsOverGlobalRule()
+        try testAppSpecificTemplateRuleWinsOverGlobalTemplateRule()
+        try testDisabledRulesAreIgnored()
+        try testFormatsShortcutForDisplay()
+        try testResolvesCommonMacKeyCodes()
+        try testRecognizesDiagonalDirection()
+        try testParsesDiagonalSignatureText()
+        try testModifierMatchingRequiresAllSpecified()
+        try testConflictDetectionFindsSimilarGestures()
+        try testCategorySerialization()
+        try testDefaultLanguageIsChinese()
+        try testChineseLocalizationResourceIsResolved()
+        try testEdgeScrollDetectionUsesContainingDisplay()
+
+        print("StroklyCoreChecks passed")
+    }
+
+    private static func testRecognizesDirectionSequenceAndCollapsesJitter() throws {
+        let recognizer = GestureRecognizer(minSegmentLength: 18)
+        let points = [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 16, y: 12),
+            CGPoint(x: 38, y: 13),
+            CGPoint(x: 63, y: 15),
+            CGPoint(x: 64, y: 22),
+            CGPoint(x: 65, y: 48),
+            CGPoint(x: 67, y: 75)
+        ]
+
+        try expectEqual(recognizer.recognize(points), GestureSignature([.right, .down]))
+    }
+
+    private static func testReturnsNilWhenPointerDoesNotTravelFarEnough() throws {
+        let recognizer = GestureRecognizer(minSegmentLength: 18)
+        let points = [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 14, y: 13),
+            CGPoint(x: 17, y: 15)
+        ]
+
+        try expectNil(recognizer.recognize(points))
+    }
+
+    private static func testParsesCompactSignatureText() throws {
+        try expectEqual(try GestureSignature(compactText: "LDR").directions, [.left, .down, .right])
+        try expectEqual(try GestureSignature(compactText: "left, up, right").directions, [.left, .up, .right])
+    }
+
+    private static func testTemplateNormalizationIgoresPositionAndScale() throws {
+        let original = GestureTemplate(points: [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 40, y: 10),
+            CGPoint(x: 40, y: 60)
+        ])
+        let movedAndScaled = GestureTemplate(points: [
+            CGPoint(x: 220, y: 120),
+            CGPoint(x: 340, y: 120),
+            CGPoint(x: 340, y: 320)
+        ])
+
+        try expectLessThan(GestureTemplateMatcher.distance(original, movedAndScaled), 0.08)
+    }
+
+    private static func testTemplateMatcherScoresSimilarShapesLowerThanDifferentShapes() throws {
+        let template = GestureTemplate(points: [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 50, y: 10),
+            CGPoint(x: 50, y: 80)
+        ])
+        let similar = GestureTemplate(points: [
+            CGPoint(x: 100, y: 100),
+            CGPoint(x: 160, y: 104),
+            CGPoint(x: 164, y: 205)
+        ])
+        let different = GestureTemplate(points: [
+            CGPoint(x: 100, y: 100),
+            CGPoint(x: 100, y: 200),
+            CGPoint(x: 40, y: 200)
+        ])
+
+        let similarScore = GestureTemplateMatcher.distance(template, similar)
+        let differentScore = GestureTemplateMatcher.distance(template, different)
+
+        try expectLessThan(similarScore, 0.12)
+        try expectLessThan(0.20, differentScore)
+    }
+
+    private static func testAppSpecificRuleWinsOverGlobalRule() throws {
+        let signature = GestureSignature([.left])
+        let globalRule = GestureRule(
+            name: "Global Back",
+            signature: signature,
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "[", modifiers: [.command]))
+        )
+        let appRule = GestureRule(
+            name: "Safari Back",
+            signature: signature,
+            scope: .application(bundleIdentifier: "com.apple.Safari"),
+            action: .keyStroke(KeyboardShortcutSpec(key: "leftArrow", modifiers: [.command]))
+        )
+
+        let match = RuleMatcher.match(
+            signature: signature,
+            bundleIdentifier: "com.apple.Safari",
+            rules: [globalRule, appRule]
+        )
+
+        try expectEqual(match?.id, appRule.id)
+    }
+
+    private static func testAppSpecificTemplateRuleWinsOverGlobalTemplateRule() throws {
+        let capturedTemplate = GestureTemplate(points: [
+            CGPoint(x: 200, y: 200),
+            CGPoint(x: 260, y: 200),
+            CGPoint(x: 260, y: 280)
+        ])
+        let globalRule = GestureRule(
+            name: "Global Corner",
+            template: GestureTemplate(points: [
+                CGPoint(x: 10, y: 10),
+                CGPoint(x: 70, y: 10),
+                CGPoint(x: 70, y: 90)
+            ]),
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "g", modifiers: [.command]))
+        )
+        let appRule = GestureRule(
+            name: "Safari Corner",
+            template: GestureTemplate(points: [
+                CGPoint(x: 15, y: 15),
+                CGPoint(x: 75, y: 16),
+                CGPoint(x: 78, y: 95)
+            ]),
+            scope: .application(bundleIdentifier: "com.apple.Safari"),
+            action: .keyStroke(KeyboardShortcutSpec(key: "s", modifiers: [.command]))
+        )
+
+        let match = RuleMatcher.match(
+            template: capturedTemplate,
+            signature: GestureSignature([.right, .down]),
+            bundleIdentifier: "com.apple.Safari",
+            rules: [globalRule, appRule]
+        )
+
+        try expectEqual(match?.id, appRule.id)
+    }
+
+    private static func testDisabledRulesAreIgnored() throws {
+        let signature = GestureSignature([.right])
+        var disabledRule = GestureRule(
+            name: "Forward",
+            signature: signature,
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "]", modifiers: [.command]))
+        )
+        disabledRule.isEnabled = false
+
+        try expectNil(RuleMatcher.match(signature: signature, bundleIdentifier: nil, rules: [disabledRule]))
+    }
+
+    private static func testFormatsShortcutForDisplay() throws {
+        let shortcut = KeyboardShortcutSpec(key: "w", modifiers: [.command, .shift])
+
+        try expectEqual(shortcut.displayText, "⇧⌘W")
+    }
+
+    private static func testResolvesCommonMacKeyCodes() throws {
+        try expectEqual(KeyboardShortcutSpec(key: "w", modifiers: []).keyCode, 13)
+        try expectEqual(KeyboardShortcutSpec(key: "space", modifiers: []).keyCode, 49)
+        try expectEqual(KeyboardShortcutSpec(key: "leftArrow", modifiers: []).keyCode, 123)
+    }
+
+    private static func testRecognizesDiagonalDirection() throws {
+        let recognizer = GestureRecognizer(minSegmentLength: 18)
+        let points = [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 30, y: 30),
+            CGPoint(x: 55, y: 55)
+        ]
+
+        try expectEqual(recognizer.recognize(points), GestureSignature([.downRight]))
+    }
+
+    private static func testParsesDiagonalSignatureText() throws {
+        try expectEqual(try GestureSignature(compactText: "DR").directions, [.downRight])
+        try expectEqual(try GestureSignature(compactText: "UL").directions, [.upLeft])
+        try expectEqual(try GestureSignature(compactText: "upright").directions, [.upRight])
+        try expectEqual(try GestureSignature(compactText: "nw").directions, [.upLeft])
+    }
+
+    private static func testModifierMatchingRequiresAllSpecified() throws {
+        let rule = GestureRule(
+            name: "Shifted Back",
+            signature: GestureSignature([.left]),
+            modifierRequirements: [.shift],
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "[", modifiers: [.command]))
+        )
+
+        let match1 = RuleMatcher.match(
+            signature: GestureSignature([.left]),
+            activeModifiers: [.shift],
+            bundleIdentifier: nil,
+            rules: [rule]
+        )
+        try expectEqual(match1?.id, rule.id)
+
+        let match2 = RuleMatcher.match(
+            signature: GestureSignature([.left]),
+            activeModifiers: [],
+            bundleIdentifier: nil,
+            rules: [rule]
+        )
+        try expectNil(match2)
+    }
+
+    private static func testConflictDetectionFindsSimilarGestures() throws {
+        let existing = GestureRule(
+            name: "Existing",
+            template: GestureTemplate(points: [
+                CGPoint(x: 10, y: 10),
+                CGPoint(x: 50, y: 10),
+                CGPoint(x: 50, y: 80)
+            ]),
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "a", modifiers: [.command]))
+        )
+
+        let conflicts = RuleMatcher.detectConflicts(
+            template: GestureTemplate(points: [
+                CGPoint(x: 12, y: 12),
+                CGPoint(x: 52, y: 11),
+                CGPoint(x: 51, y: 82)
+            ]),
+            rules: [existing]
+        )
+
+        try expectEqual(conflicts.count, 1)
+        try expectEqual(conflicts.first?.name, "Existing")
+    }
+
+    private static func testCategorySerialization() throws {
+        let rule = GestureRule(
+            name: "Test",
+            category: "Navigation",
+            signature: GestureSignature([.left]),
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "[", modifiers: [.command]))
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(rule)
+        let decoded = try JSONDecoder().decode(GestureRule.self, from: data)
+
+        try expectEqual(decoded.category, "Navigation")
+    }
+
+    @MainActor
+    private static func testDefaultLanguageIsChinese() throws {
+        let defaults = UserDefaults(suiteName: "com.luantu.Strokly.checks.\(UUID().uuidString)")!
+        let settings = AppSettingsStore(defaults: defaults)
+
+        try expectEqual(settings.language, .zhHans)
+        try expectEqual(settings.locale.identifier, "zh-Hans")
+    }
+
+    @MainActor
+    private static func testChineseLocalizationResourceIsResolved() throws {
+        UserDefaults.standard.set(["zh-Hans"], forKey: "AppleLanguages")
+        try expectEqual(L10n.string("General"), "通用")
+        try expectEqual(L10n.string("Right Mouse"), "右键")
+    }
+
+    private static func testEdgeScrollDetectionUsesContainingDisplay() throws {
+        let main = DisplayEdgeBounds(bounds: CGRect(x: 0, y: 0, width: 1440, height: 900))
+        let second = DisplayEdgeBounds(bounds: CGRect(x: 1440, y: 0, width: 1440, height: 900))
+
+        try expectEqual(
+            EdgeScrollDetector.edge(
+                for: CGPoint(x: 2000, y: 10),
+                displays: [main, second],
+                threshold: 24
+            ),
+            .top
+        )
+        try expectEqual(
+            EdgeScrollDetector.edge(
+                for: CGPoint(x: 2870, y: 450),
+                displays: [main, second],
+                threshold: 24
+            ),
+            .right
+        )
+    }
+
+    private static func expectEqual<T: Equatable>(_ actual: T, _ expected: T, file: StaticString = #file, line: UInt = #line) throws {
+        if actual != expected {
+            throw CheckFailure("Expected \(expected), got \(actual)", file: file, line: line)
+        }
+    }
+
+    private static func expectNil<T>(_ actual: T?, file: StaticString = #file, line: UInt = #line) throws {
+        if let actual {
+            throw CheckFailure("Expected nil, got \(actual)", file: file, line: line)
+        }
+    }
+
+    private static func expectLessThan<T: Comparable>(_ actual: T, _ threshold: T, file: StaticString = #file, line: UInt = #line) throws {
+        if actual >= threshold {
+            throw CheckFailure("Expected \(actual) to be less than \(threshold)", file: file, line: line)
+        }
+    }
+}
+
+private struct CheckFailure: Error, CustomStringConvertible {
+    var message: String
+    var file: StaticString
+    var line: UInt
+
+    init(_ message: String, file: StaticString, line: UInt) {
+        self.message = message
+        self.file = file
+        self.line = line
+    }
+
+    var description: String {
+        "\(file):\(line): \(message)"
+    }
+}
