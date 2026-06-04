@@ -56,22 +56,22 @@ public final class ActionExecutor {
         case .minimizeWindow:
             minimizeFrontWindow()
 
-        // Volume — via System Events key simulation (triggers system HUD)
+        // Volume — direct AppleScript (most reliable)
         case .volumeUp:
-            runShellScript("osascript -e 'tell application \"System Events\" to key code 111'")
+            runAppleScript("set volume output volume (output volume of (get volume settings) + 5)")
 
         case .volumeDown:
-            runShellScript("osascript -e 'tell application \"System Events\" to key code 103'")
+            runAppleScript("set volume output volume (output volume of (get volume settings) - 5)")
 
         case .volumeMute:
-            runShellScript("osascript -e 'tell application \"System Events\" to key code 109'")
+            runAppleScript("set volume output muted not (output muted of (get volume settings))")
 
-        // Brightness — via osascript (key codes unreliable on modern Macs)
+        // Brightness — direct AppleScript
         case .brightnessUp:
-            runShellScript("osascript -e 'tell application \"System Events\" to key code 144'")
+            runAppleScript("tell application \"System Events\" to key code 144")
 
         case .brightnessDown:
-            runShellScript("osascript -e 'tell application \"System Events\" to key code 145'")
+            runAppleScript("tell application \"System Events\" to key code 145")
 
         // System — CGEvent key simulation
         case .showDesktop:
@@ -90,7 +90,7 @@ public final class ActionExecutor {
             sendKey(code: 53, flags: [.maskCommand, .maskAlternate]) // Esc + Cmd+Option
 
         case .lockScreen:
-            runShellScript("osascript -e 'tell application \"System Events\" to keystroke \"q\" using {command down, control down}'")
+            runAppleScript("tell application \"System Events\" to keystroke \"q\" using {command down, control down}")
 
         case .sleepDisplay:
             runShellScript("pmset displaysleepnow")

@@ -25,7 +25,7 @@ public struct SettingsView: View {
             // About — pinned to bottom (same top/bottom margin via VStack padding)
             GroupBox {
                 HStack {
-                    LabeledContent("Version", value: "0.2.0")
+                    LabeledContent("Version", value: "0.9.0")
                         .frame(maxWidth: 200)
                     LabeledContent("Bundle ID", value: "com.luantu.Strokly")
                         .textSelection(.enabled)

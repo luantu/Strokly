@@ -6,8 +6,8 @@ MODE="${1:-run}"
 APP_NAME="Strokly"
 BUNDLE_ID="com.luantu.Strokly"
 MIN_SYSTEM_VERSION="13.0"
-APP_VERSION="0.2.0"
-APP_BUILD="2"
+APP_VERSION="0.9.0"
+APP_BUILD="3"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -84,10 +84,11 @@ copy_localization_resources() {
   local build_dir="$1"
   local resources_dir="$APP_CONTENTS/Resources"
 
-  # SwiftPM resources live in sidecar bundles next to the executable. Copy the
-  # bundle for Bundle.module access and copy lproj folders to the main app
-  # bundle so SwiftUI Text("key") localization also works.
-  find "$build_dir" -maxdepth 1 -type d -name "${APP_NAME}_*.bundle" | while read -r bundle; do
+  # SwiftPM resources live in sidecar bundles next to the executable. Copy all
+  # dependency resource bundles (e.g. StroklyCore_StroklyCore.bundle) for
+  # Bundle.module access, and copy lproj folders to the main app bundle so
+  # SwiftUI Text("key") localization also works.
+  find "$build_dir" -maxdepth 1 -type d -name "*.bundle" | while read -r bundle; do
     ditto --norsrc --noextattr "$bundle" "$resources_dir/$(basename "$bundle")"
     find "$bundle" -maxdepth 1 -type d -name "*.lproj" | while read -r lproj; do
       local name
@@ -224,6 +225,9 @@ open_app() {
 
 refresh_app_registration() {
   touch "$APP_BUNDLE"
+  # Clear macOS icon cache to ensure the new icon shows immediately
+  rm -rf ~/Library/Caches/com.apple.iconservices.store 2>/dev/null || true
+
   local lsregister="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
   if [ -x "$lsregister" ]; then
     "$lsregister" -f "$APP_BUNDLE" >/dev/null 2>&1 || true

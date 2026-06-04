@@ -12,9 +12,17 @@ struct StroklyApp: App {
     init() {
         let sharedStore = RuleStore()
         let sharedSettings = AppSettingsStore()
+        let sharedEngine = GestureEngine(ruleStore: sharedStore, settingsStore: sharedSettings)
         _store = StateObject(wrappedValue: sharedStore)
-        _engine = StateObject(wrappedValue: GestureEngine(ruleStore: sharedStore, settingsStore: sharedSettings))
+        _engine = StateObject(wrappedValue: sharedEngine)
         _settings = StateObject(wrappedValue: sharedSettings)
+
+        // Auto-start monitoring on app launch, independent of any window
+        if sharedSettings.autoStartMonitoring && AccessibilityPermissionService.isTrusted {
+            DispatchQueue.main.async {
+                sharedEngine.start()
+            }
+        }
     }
 
     var body: some Scene {
@@ -25,12 +33,8 @@ struct StroklyApp: App {
                 .onAppear {
                     NSApp.setActivationPolicy(.regular)
                     NSApp.activate(ignoringOtherApps: true)
-                    // Tag the NSWindow so we can find it later
                     if let win = NSApp.windows.first(where: { $0.title == "Strokly" }) {
                         win.identifier = NSUserInterfaceItemIdentifier("main")
-                    }
-                    if settings.autoStartMonitoring && AccessibilityPermissionService.isTrusted {
-                        engine.start()
                     }
                 }
                 .onDisappear {
@@ -98,8 +102,25 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Hide dock icon by default — only show menu bar icon
-        NSApp.setActivationPolicy(.accessory)
+        // Show the main window so the user sees the app is running.
+        // The window's onAppear will switch to .regular; we set .accessory
+        // as baseline so the menu-bar-only lifecycle works after closing.
+        DispatchQueue.main.async {
+            if let win = NSApp.windows.first(where: { $0.title == "Strokly" || $0.identifier?.rawValue == "main" }) {
+                win.makeKeyAndOrderFront(nil)
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+            } else {
+                // WindowGroup may not have created the window yet — post again
+                DispatchQueue.main.async {
+                    if let win = NSApp.windows.first(where: { $0.title == "Strokly" || $0.identifier?.rawValue == "main" }) {
+                        win.makeKeyAndOrderFront(nil)
+                        NSApp.setActivationPolicy(.regular)
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                }
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
