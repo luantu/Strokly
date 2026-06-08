@@ -243,6 +243,8 @@ public struct RuleEditorView: View {
             TextEditor(text: actionValueBinding)
                 .font(.system(.body, design: .monospaced))
                 .frame(minHeight: 100)
+            Toggle("Run as Administrator", isOn: $rule.action.runAsAdmin)
+                .help("Runs the script with administrator privileges (macOS will ask for your password).")
         case .appleScript:
             TextEditor(text: actionValueBinding)
                 .font(.system(.body, design: .monospaced))

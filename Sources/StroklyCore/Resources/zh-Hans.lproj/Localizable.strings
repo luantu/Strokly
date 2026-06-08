@@ -103,6 +103,8 @@
 "Select an app..." = "选择应用...";
 "Use Frontmost App" = "使用当前应用";
 "No app selected" = "未选择应用";
+"Run as Administrator" = "以管理员身份运行";
+"Runs the script with administrator privileges (macOS will ask for your password)." = "以管理员权限运行脚本（macOS 会要求输入密码）。";
 "Window" = "窗口";
 "Media" = "媒体";
 "System" = "系统";

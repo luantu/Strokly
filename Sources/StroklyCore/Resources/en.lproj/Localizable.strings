@@ -102,6 +102,8 @@
 "Use Frontmost App" = "Use Frontmost App";
 "No app selected" = "No app selected";
 "System Action" = "System Action";
+"Run as Administrator" = "Run as Administrator";
+"Runs the script with administrator privileges (macOS will ask for your password)." = "Runs the script with administrator privileges (macOS will ask for your password).";
 "Window" = "Window";
 "Media" = "Media";
 "System" = "System";

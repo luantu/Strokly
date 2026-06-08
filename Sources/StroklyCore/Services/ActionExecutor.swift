@@ -20,7 +20,7 @@ public final class ActionExecutor {
         case .openApplication:
             openApplication(action.value)
         case .shellScript:
-            runShellScript(action.value)
+            runShellScript(action.value, asAdmin: action.runAsAdmin)
         case .appleScript:
             runAppleScript(action.value)
         case .systemAction:
@@ -390,12 +390,20 @@ public final class ActionExecutor {
         NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
     }
 
-    private func runShellScript(_ script: String) {
+    private func runShellScript(_ script: String, asAdmin: Bool = false) {
         guard !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-lc", script]
-        try? process.run()
+        if asAdmin {
+            let escaped = script
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+            let appleScript = "do shell script \"\(escaped)\" with administrator privileges"
+            runAppleScript(appleScript)
+        } else {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+            process.arguments = ["-lc", script]
+            try? process.run()
+        }
     }
 
     private func runAppleScript(_ script: String) {

@@ -102,19 +102,22 @@ public struct GestureAction: Codable, Hashable, Equatable {
     public var value: String
     public var systemAction: SystemAction?
     public var focusVisibleWindowBeforeExecution: Bool
+    public var runAsAdmin: Bool
 
     public init(
         kind: Kind,
         keyShortcut: KeyboardShortcutSpec? = nil,
         value: String = "",
         systemAction: SystemAction? = nil,
-        focusVisibleWindowBeforeExecution: Bool = false
+        focusVisibleWindowBeforeExecution: Bool = false,
+        runAsAdmin: Bool = false
     ) {
         self.kind = kind
         self.keyShortcut = keyShortcut
         self.value = value
         self.systemAction = systemAction
         self.focusVisibleWindowBeforeExecution = focusVisibleWindowBeforeExecution
+        self.runAsAdmin = runAsAdmin
     }
 
     enum CodingKeys: String, CodingKey {
@@ -123,6 +126,7 @@ public struct GestureAction: Codable, Hashable, Equatable {
         case value
         case systemAction
         case focusVisibleWindowBeforeExecution
+        case runAsAdmin
     }
 
     public init(from decoder: Decoder) throws {
@@ -132,6 +136,7 @@ public struct GestureAction: Codable, Hashable, Equatable {
         value = try container.decodeIfPresent(String.self, forKey: .value) ?? ""
         systemAction = try container.decodeIfPresent(SystemAction.self, forKey: .systemAction)
         focusVisibleWindowBeforeExecution = try container.decodeIfPresent(Bool.self, forKey: .focusVisibleWindowBeforeExecution) ?? false
+        runAsAdmin = try container.decodeIfPresent(Bool.self, forKey: .runAsAdmin) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -141,6 +146,7 @@ public struct GestureAction: Codable, Hashable, Equatable {
         try container.encode(value, forKey: .value)
         try container.encodeIfPresent(systemAction, forKey: .systemAction)
         try container.encode(focusVisibleWindowBeforeExecution, forKey: .focusVisibleWindowBeforeExecution)
+        try container.encodeIfPresent(runAsAdmin, forKey: .runAsAdmin)
     }
 
     public static func keyStroke(_ shortcut: KeyboardShortcutSpec) -> GestureAction {
