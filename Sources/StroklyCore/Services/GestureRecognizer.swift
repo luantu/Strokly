@@ -37,6 +37,8 @@ public struct GestureRecognizer {
         var anchor = points[0]
         var directions: [GestureDirection] = []
         var lastDirection: GestureDirection?
+        var pendingDirection: GestureDirection?
+        var pendingCount = 0
 
         for point in points.dropFirst() {
             let dx = point.x - anchor.x
@@ -46,11 +48,36 @@ public struct GestureRecognizer {
             }
 
             let direction = GestureDirection.dominantDirection(dx: dx, dy: dy)
-            if direction != lastDirection {
+            anchor = point
+
+            guard let current = lastDirection else {
                 directions.append(direction)
                 lastDirection = direction
+                continue
             }
-            anchor = point
+
+            if direction == current {
+                pendingDirection = nil
+                pendingCount = 0
+                continue
+            }
+
+            if direction == pendingDirection {
+                pendingCount += 1
+                if pendingCount >= 2 {
+                    directions.append(direction)
+                    lastDirection = direction
+                    pendingDirection = nil
+                    pendingCount = 0
+                }
+            } else {
+                pendingDirection = direction
+                pendingCount = 1
+            }
+        }
+
+        if let pending = pendingDirection, pendingCount > 0 {
+            directions.append(pending)
         }
 
         guard !directions.isEmpty else {

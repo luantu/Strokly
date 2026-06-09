@@ -25,7 +25,7 @@ public struct SettingsView: View {
             // About — pinned to bottom (same top/bottom margin via VStack padding)
             GroupBox {
                 HStack {
-                    LabeledContent("Version", value: "0.9.0")
+                    LabeledContent("Version", value: "0.9.1")
                         .frame(maxWidth: 200)
                     LabeledContent("Bundle ID", value: "com.luantu.Strokly")
                         .textSelection(.enabled)
@@ -38,6 +38,12 @@ public struct SettingsView: View {
                 Label("About", systemImage: "info.circle")
                     .font(.headline)
             }
+
+            Button("Close Settings") {
+                NSApp.keyWindow?.close()
+            }
+            .frame(maxWidth: .infinity)
+            .controlSize(.large)
         }
         .padding(20)
         .frame(width: 600, height: 480)
@@ -127,8 +133,24 @@ public struct SettingsView: View {
             // Rules
             GroupBox {
                 VStack(alignment: .leading, spacing: 10) {
-                    Button("Export Rules...") { showExportPanel = true }
-                    Button("Import Rules...") { showImportPanel = true }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Slider(value: $settings.minGestureDistance, in: 8...80, step: 4) {
+                            Text("Min Trigger Distance")
+                        } minimumValueLabel: {
+                            Text("8").font(.caption).foregroundStyle(.secondary)
+                        } maximumValueLabel: {
+                            Text("80").font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("\(Int(settings.minGestureDistance))pt — larger = less accidental triggers")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    HStack(spacing: 8) {
+                        Button("Export Rules...") { showExportPanel = true }
+                        Button("Import Rules...") { showImportPanel = true }
+                        Spacer()
+                    }
                     Divider()
                     Button("Reset to Defaults") { ruleStore.resetDefaults() }
                         .foregroundStyle(.red)

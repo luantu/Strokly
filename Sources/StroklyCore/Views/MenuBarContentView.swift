@@ -4,6 +4,7 @@ import SwiftUI
 public struct MenuBarContentView: View {
     @ObservedObject private var engine: GestureEngine
     private let openMainWindow: () -> Void
+    @Environment(\.openWindow) private var openWindow
 
     public init(engine: GestureEngine, openMainWindow: @escaping () -> Void) {
         self.engine = engine
@@ -56,18 +57,17 @@ public struct MenuBarContentView: View {
                 }
             }
 
-            if #available(macOS 14, *) {
-            SettingsLink {
+            Button {
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
+                openMainWindow()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    openWindow(id: "settings")
+                }
+            } label: {
                 Label("Settings...", systemImage: "gearshape")
             }
             .keyboardShortcut(",", modifiers: .command)
-        } else {
-            Button("Settings...") {
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-            .keyboardShortcut(",", modifiers: .command)
-        }
 
             Button("Quit Strokly") {
                 NSApp.terminate(nil)

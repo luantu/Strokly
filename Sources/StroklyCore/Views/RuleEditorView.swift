@@ -337,7 +337,7 @@ public struct RuleEditorView: View {
     }
 
     private func checkConflicts() {
-        let conflicts = RuleMatcher.detectConflicts(template: rule.template, triggerButton: rule.triggerButton, excludeRuleID: rule.id, rules: store.rules)
+        let conflicts = RuleMatcher.detectConflicts(template: rule.template, triggerButton: rule.triggerButton, scope: rule.scope, excludeRuleID: rule.id, rules: store.rules)
         conflictWarning = conflicts.first.map { "Similar to \"\($0.name)\" — may conflict." }
     }
 }

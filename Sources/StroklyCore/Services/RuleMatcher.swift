@@ -87,6 +87,7 @@ public enum RuleMatcher {
     public static func detectConflicts(
         template: GestureTemplate,
         triggerButton: TriggerButton = .rightMouse,
+        scope: RuleScope = .global,
         excludeRuleID: UUID? = nil,
         rules: [GestureRule]
     ) -> [GestureRule] {
@@ -94,10 +95,20 @@ public enum RuleMatcher {
             rule.isEnabled &&
                 rule.triggerButton == triggerButton &&
                 !rule.template.isEmpty &&
-                rule.id != excludeRuleID
+                rule.id != excludeRuleID &&
+                scopesOverlap(scope, rule.scope)
         }
         return eligible.filter { rule in
             GestureTemplateMatcher.distance(template, rule.template) < rule.matchTolerance * 0.7
+        }
+    }
+
+    public static func scopesOverlap(_ a: RuleScope, _ b: RuleScope) -> Bool {
+        switch (a.kind, b.kind) {
+        case (.global, _), (_, .global):
+            return true
+        case (.application, .application):
+            return a.bundleIdentifier == b.bundleIdentifier
         }
     }
 

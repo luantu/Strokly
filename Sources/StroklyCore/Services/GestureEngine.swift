@@ -19,6 +19,10 @@ public final class GestureEngine: ObservableObject {
     public let debugWindow = EdgeScrollDebugWindow()
     private let edgeScrollThrottleInterval: TimeInterval = 0.15
     private var lastEdgeScrollTime: Date = .distantPast
+    private var previewRecognizer = GestureRecognizer()
+
+    private var pendingMatch: (rule: GestureRule, capture: GestureCapture)?
+    private var hasReachedMinDistance = false
 
     public init(ruleStore: RuleStore, settingsStore: AppSettingsStore) {
         self.ruleStore = ruleStore
@@ -28,12 +32,36 @@ public final class GestureEngine: ObservableObject {
         self.overlay = GestureOverlayWindow()
         self.tipWindow = GestureTipWindow()
 
+        let d = settingsStore.minGestureDistance
+        monitor.recognizer.minSegmentLength = d
+        monitor.recognizer.minPathLength = d
+        previewRecognizer.minSegmentLength = d
+        previewRecognizer.minPathLength = d
+
         monitor.onTraceChanged = { [weak self] points in
-            guard let self, !self.isFrontmostAppBlocked() else {
+            guard let self else {
                 self?.overlay.hide()
                 return
             }
-            self.overlay.update(points: points)
+            if points.isEmpty {
+                self.overlay.hide()
+                self.hasReachedMinDistance = false
+                return
+            }
+            guard !self.isFrontmostAppBlocked() else {
+                self.overlay.hide()
+                self.pendingMatch = nil
+                return
+            }
+
+            if !self.hasReachedMinDistance {
+                self.hasReachedMinDistance = self.isAboveMinDistance(points)
+            }
+
+            if self.hasReachedMinDistance {
+                self.overlay.update(points: points)
+                self.updatePreview(points: points)
+            }
         }
 
         monitor.onGesture = { [weak self] capture in
@@ -43,6 +71,71 @@ public final class GestureEngine: ObservableObject {
         monitor.onEdgeScroll = { [weak self] capture in
             self?.handleEdgeScroll(capture)
         }
+    }
+
+    private func isAboveMinDistance(_ points: [CGPoint]) -> Bool {
+        guard points.count > 1 else { return false }
+        let first = points.first!
+        let last = points.last!
+        let dx = last.x - first.x
+        let dy = last.y - first.y
+        return hypot(dx, dy) >= settingsStore.minGestureDistance
+    }
+
+    private func updatePreview(points: [CGPoint]) {
+        guard points.count > 1 else {
+            pendingMatch = nil
+            tipWindow.hide()
+            return
+        }
+
+        let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        let activeModifiers = currentModifiers()
+
+        guard let signature = previewRecognizer.recognize(points),
+              signature.directions.count >= 1 else {
+            pendingMatch = nil
+            tipWindow.hide()
+            return
+        }
+
+        let triggerButton = monitor.activeButton
+
+        guard let match = RuleMatcher.match(
+            signature: signature,
+            triggerButton: triggerButton,
+            activeModifiers: activeModifiers,
+            bundleIdentifier: bundleIdentifier,
+            rules: ruleStore.rules
+        ) else {
+            pendingMatch = nil
+            tipWindow.hide()
+            return
+        }
+
+        pendingMatch = (match, GestureCapture(
+            signature: signature,
+            template: GestureTemplate(points: points),
+            points: points,
+            startedAt: Date(),
+            endedAt: Date(),
+            triggerButton: triggerButton,
+            activeModifiers: activeModifiers
+        ))
+
+        if match.showTip, let last = points.last {
+            tipWindow.show(title: match.name, detail: match.action.displaySummary, at: last)
+        }
+    }
+
+    private func currentModifiers() -> [KeyboardModifier] {
+        let flags = NSEvent.modifierFlags
+        var mods: [KeyboardModifier] = []
+        if flags.contains(.control) { mods.append(.control) }
+        if flags.contains(.option) { mods.append(.option) }
+        if flags.contains(.shift) { mods.append(.shift) }
+        if flags.contains(.command) { mods.append(.command) }
+        return mods
     }
 
     public var accessibilityTrusted: Bool {
@@ -151,6 +244,8 @@ public final class GestureEngine: ObservableObject {
         lastGesture = capture.signature.displayText.isEmpty ? "Custom Gesture" : capture.signature.displayText
         let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
 
+        let usePendingTip = pendingMatch != nil
+
         guard let match = RuleMatcher.matchWithScore(
             template: capture.template,
             signature: capture.signature,
@@ -160,6 +255,8 @@ public final class GestureEngine: ObservableObject {
             rules: ruleStore.rules
         ) else {
             lastAction = "No matching rule"
+            pendingMatch = nil
+            tipWindow.hide()
             StroklyLogger.shared.warning("gesture.noRule", [
                 "signature": capture.signature.compactText,
                 "trigger": capture.triggerButton.rawValue,
@@ -171,6 +268,7 @@ public final class GestureEngine: ObservableObject {
         let rule = match.rule
         lastAction = rule.name
         let focusPoint = capture.points.last
+        pendingMatch = nil
         StroklyLogger.shared.info("gesture.ruleMatched", [
             "rule": rule.name,
             "score": String(format: "%.4f", match.score),
@@ -182,11 +280,15 @@ public final class GestureEngine: ObservableObject {
             guard let self else { return }
             self.executor.execute(rule.action, focusPoint: focusPoint)
             if rule.showTip {
-                self.tipWindow.show(
-                    title: rule.name,
-                    detail: "\(rule.action.displaySummary) · match \(Int((1 - match.score).clamped(to: 0...1) * 100))%",
-                    at: focusPoint
-                )
+                if usePendingTip {
+                    self.tipWindow.updateDetail("\(rule.action.displaySummary) · match \(Int((1 - match.score).clamped(to: 0...1) * 100))%")
+                } else {
+                    self.tipWindow.show(
+                        title: rule.name,
+                        detail: "\(rule.action.displaySummary) · match \(Int((1 - match.score).clamped(to: 0...1) * 100))%",
+                        at: focusPoint
+                    )
+                }
             }
         }
     }

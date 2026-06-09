@@ -34,13 +34,13 @@ public final class GestureEventMonitor {
     public var onTraceChanged: ([CGPoint]) -> Void = { _ in }
     public var onGesture: (GestureCapture) -> Void = { _ in }
     public var onEdgeScroll: (EdgeScrollCapture) -> Void = { _ in }
+public private(set) var activeButton: TriggerButton = .rightMouse
 
-    private let recognizer: GestureRecognizer
+    public var recognizer: GestureRecognizer
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var points: [CGPoint] = []
     private var startedAt = Date()
-    private var activeButton: TriggerButton = .rightMouse
     private let syntheticMarker: Int64 = 0x5354524F4B4C59
     private let edgeThreshold: CGFloat = 24
     private var lastDispatchedPoint: CGPoint = .zero

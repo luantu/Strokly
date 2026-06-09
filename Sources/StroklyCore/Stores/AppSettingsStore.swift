@@ -51,6 +51,9 @@ public final class AppSettingsStore: ObservableObject {
     @Published public var fileLoggingEnabled: Bool {
         didSet { save(); configureLogger() }
     }
+    @Published public var minGestureDistance: CGFloat {
+        didSet { save() }
+    }
 
     private let defaults: UserDefaults
     private let suiteName = "com.luantu.Strokly"
@@ -64,6 +67,11 @@ public final class AppSettingsStore: ObservableObject {
         self.blockedAppBundleIDs = defaults.stringArray(forKey: "blockedAppBundleIDs") ?? []
         self.logLevel = StroklyLogLevel(rawValue: defaults.string(forKey: "logLevel") ?? "") ?? .info
         self.fileLoggingEnabled = defaults.object(forKey: "fileLoggingEnabled") as? Bool ?? true
+        if defaults.object(forKey: "minGestureDistance") != nil {
+            self.minGestureDistance = min(max(CGFloat(defaults.double(forKey: "minGestureDistance")), 8), 80)
+        } else {
+            self.minGestureDistance = 24
+        }
         applyLanguage()
         configureLogger()
     }
@@ -79,6 +87,7 @@ public final class AppSettingsStore: ObservableObject {
         defaults.set(logLevel.rawValue, forKey: "logLevel")
         defaults.set(fileLoggingEnabled, forKey: "fileLoggingEnabled")
         defaults.set(blockedAppBundleIDs, forKey: "blockedAppBundleIDs")
+        defaults.set(minGestureDistance, forKey: "minGestureDistance")
     }
 
     private func applyLanguage() {

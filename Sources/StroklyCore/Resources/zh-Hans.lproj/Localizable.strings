@@ -121,6 +121,8 @@
 "Startup" = "启动";
 "Launch at Login" = "登录时启动";
 "Auto-start Monitoring" = "自动开始监听";
+"Min Trigger Distance" = "最小触发距离";
+"larger = less accidental triggers" = "越大 = 越不易误触";
 "Language" = "语言";
 "Changing language requires restarting the app." = "切换语言需要重启应用。";
 "About" = "关于";

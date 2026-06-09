@@ -120,6 +120,8 @@
 "Startup" = "Startup";
 "Launch at Login" = "Launch at Login";
 "Auto-start Monitoring" = "Auto-start Monitoring";
+"Min Trigger Distance" = "Min Trigger Distance";
+"larger = less accidental triggers" = "larger = less accidental triggers";
 "Language" = "Language";
 "Changing language requires restarting the app." = "Changing language requires restarting the app.";
 "About" = "About";

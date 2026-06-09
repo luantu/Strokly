@@ -13,6 +13,26 @@ public final class GestureTipWindow {
     public init() {}
 
     /// Show tip asynchronously — does NOT block the caller.
+    public func hide() {
+        dismissWorkItem?.cancel()
+        window?.orderOut(nil)
+    }
+
+    public func updateDetail(_ detail: String) {
+        detailLabel?.stringValue = detail
+        dismissWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.25
+                self?.window?.animator().alphaValue = 0
+            } completionHandler: { [weak self] in
+                self?.window?.orderOut(nil)
+            }
+        }
+        dismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: workItem)
+    }
+
     public func show(title: String, detail: String, at cgPoint: CGPoint?) {
         dismissWorkItem?.cancel()
         prepareIfNeeded()

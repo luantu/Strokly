@@ -5,9 +5,10 @@ import QuartzCore
 
 @MainActor
 public final class GestureOverlayWindow {
-    private var windowMap: [CGDirectDisplayID: (window: NSWindow, view: GestureOverlayView)] = [:]
+    private var windowMap: [CGDirectDisplayID: (window: NSWindow, view: OverlayContentView)] = [:]
     private var cachedMappings: [ScreenCoordinateConverter.DisplayMapping] = []
     private var activeDisplayID: CGDirectDisplayID?
+    private var lastPointCount: Int = 0
 
     public init() {}
 
@@ -22,32 +23,17 @@ public final class GestureOverlayWindow {
             cachedMappings = converter.mappings
         }
 
-        // Fast path: if we already know which display, use it
-        let displayID: CGDirectDisplayID
-        if let cached = activeDisplayID,
-           let mapping = cachedMappings.first(where: { $0.displayID == cached }),
-           mapping.containsCGPoint(points.last!) {
-            displayID = cached
-        } else {
-            guard let mapping = cachedMappings.first(where: { $0.containsCGPoint(points.last!) }) else {
-                return
-            }
-            displayID = mapping.displayID
-            activeDisplayID = displayID
-        }
-
+        let displayID = findDisplay(for: points.last!)
         guard let mapping = cachedMappings.first(where: { $0.displayID == displayID }) else { return }
+        activeDisplayID = displayID
 
-        let appKitPoints = points.map(mapping.appKitPoint(fromCGPoint:))
-
-        // Hide other displays
         for (id, entry) in windowMap where id != displayID {
             entry.window.orderOut(nil)
             windowMap[id] = nil
         }
 
         if let entry = windowMap[displayID] {
-            entry.view.points = appKitPoints
+            entry.view.appendPoints(points, from: lastPointCount, cgBounds: mapping.cgBounds)
             if !entry.window.isVisible {
                 entry.window.setFrame(mapping.appKitFrame, display: false)
                 entry.window.orderFrontRegardless()
@@ -66,13 +52,14 @@ public final class GestureOverlayWindow {
             overlayWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             overlayWindow.hasShadow = false
 
-            let view = GestureOverlayView(frame: CGRect(origin: .zero, size: mapping.appKitFrame.size))
-            view.desktopFrame = mapping.appKitFrame
-            view.points = appKitPoints
+            let view = OverlayContentView(frame: CGRect(origin: .zero, size: mapping.appKitFrame.size))
+            view.appendPoints(points, from: 0, cgBounds: mapping.cgBounds)
             overlayWindow.contentView = view
             overlayWindow.orderFrontRegardless()
             windowMap[displayID] = (overlayWindow, view)
         }
+
+        lastPointCount = points.count
     }
 
     public func hide() {
@@ -82,108 +69,87 @@ public final class GestureOverlayWindow {
         }
         windowMap.removeAll()
         activeDisplayID = nil
+        lastPointCount = 0
     }
 
     public func refreshScreens() {
         cachedMappings = ScreenCoordinateConverter().mappings
         activeDisplayID = nil
     }
+
+    private func findDisplay(for point: CGPoint) -> CGDirectDisplayID {
+        if let cached = activeDisplayID,
+           let mapping = cachedMappings.first(where: { $0.displayID == cached }),
+           mapping.containsCGPoint(point) {
+            return cached
+        }
+        return cachedMappings.first(where: { $0.containsCGPoint(point) })?.displayID
+            ?? cachedMappings.first!.displayID
+    }
 }
 
-private final class GestureOverlayView: NSView {
-    var points: [CGPoint] = [] {
-        didSet { scheduleRedraw() }
-    }
+private final class OverlayContentView: NSView {
+    private let traceLayer: CAShapeLayer = {
+        let l = CAShapeLayer()
+        l.strokeColor = NSColor.systemBlue.cgColor
+        l.fillColor = NSColor.clear.cgColor
+        l.lineWidth = 4
+        l.lineCap = .round
+        l.lineJoin = .round
+        return l
+    }()
 
-    var desktopFrame: CGRect = .zero
-    private var lastRedrawTime: CFTimeInterval = 0
-    private var pendingRedraw = false
-    private var traceLayer: CAShapeLayer?
-    private var lastDrawnCount: Int = 0
+    private let dotLayer: CAShapeLayer = {
+        let l = CAShapeLayer()
+        l.fillColor = NSColor.systemBlue.withAlphaComponent(0.95).cgColor
+        return l
+    }()
+
+    private var cgBounds: CGRect = .zero
 
     override var isFlipped: Bool { true }
 
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
+    override init(frame: CGRect) {
+        super.init(frame: frame)
         wantsLayer = true
+        layer?.addSublayer(traceLayer)
+        layer?.addSublayer(dotLayer)
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    func appendPoints(_ cgPoints: [CGPoint], from startIdx: Int, cgBounds: CGRect) {
+        self.cgBounds = cgBounds
+        guard startIdx < cgPoints.count else { return }
+
+        let path: CGMutablePath
+        if startIdx > 0, let existing = traceLayer.path, let copy = existing.mutableCopy() {
+            path = copy
+        } else {
+            path = CGMutablePath()
+            path.move(to: viewPoint(cgPoints[0], cgBounds: cgBounds))
+        }
+
+        for i in Swift.max(startIdx, 1)..<cgPoints.count {
+            path.addLine(to: viewPoint(cgPoints[i], cgBounds: cgBounds))
+        }
+
+        traceLayer.path = path
+
+        if let last = cgPoints.last {
+            let vp = viewPoint(last, cgBounds: cgBounds)
+            let dot = CGMutablePath()
+            dot.addEllipse(in: CGRect(x: vp.x - 5, y: vp.y - 5, width: 10, height: 10))
+            dotLayer.path = dot
+        }
     }
 
     func clearDrawing() {
-        points = []
-        lastDrawnCount = 0
-        traceLayer?.path = nil
-        traceLayer?.removeFromSuperlayer()
-        traceLayer = nil
+        traceLayer.path = nil
+        dotLayer.path = nil
     }
 
-    private func scheduleRedraw() {
-        let now = CACurrentMediaTime()
-        if now - lastRedrawTime >= 0.016 {
-            lastRedrawTime = now
-            needsDisplay = true
-        } else if !pendingRedraw {
-            pendingRedraw = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) { [weak self] in
-                guard let self else { return }
-                self.pendingRedraw = false
-                self.lastRedrawTime = CACurrentMediaTime()
-                self.needsDisplay = true
-            }
-        }
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
-        guard points.count > 1 else { return }
-
-        let converted = points.map(convertPointToView)
-
-        if traceLayer == nil {
-            let layer = CAShapeLayer()
-            layer.strokeColor = NSColor.systemBlue.cgColor
-            layer.fillColor = NSColor.clear.cgColor
-            layer.lineWidth = 4
-            layer.lineCap = .round
-            layer.lineJoin = .round
-            self.layer?.addSublayer(layer)
-            traceLayer = layer
-            lastDrawnCount = 0
-        }
-
-        // Incremental path update: only append new segments
-        let path: CGMutablePath
-        if lastDrawnCount > 0 && lastDrawnCount <= converted.count {
-            path = (traceLayer?.path?.mutableCopy()) ?? CGMutablePath()
-            for i in lastDrawnCount..<converted.count {
-                if i == 0 {
-                    path.move(to: converted[i])
-                } else {
-                    path.addLine(to: converted[i])
-                }
-            }
-        } else {
-            path = CGMutablePath()
-            path.move(to: converted[0])
-            for point in converted.dropFirst() {
-                path.addLine(to: point)
-            }
-        }
-
-        traceLayer?.path = path
-        lastDrawnCount = converted.count
-
-        // Draw endpoint dot
-        if let end = converted.last {
-            let dot = NSBezierPath(ovalIn: CGRect(x: end.x - 5, y: end.y - 5, width: 10, height: 10))
-            NSColor.systemBlue.withAlphaComponent(0.95).setFill()
-            dot.fill()
-        }
-    }
-
-    private func convertPointToView(_ point: CGPoint) -> CGPoint {
-        CGPoint(
-            x: point.x - desktopFrame.minX,
-            y: desktopFrame.maxY - point.y
-        )
+    private func viewPoint(_ p: CGPoint, cgBounds: CGRect) -> CGPoint {
+        CGPoint(x: p.x - cgBounds.minX, y: p.y - cgBounds.minY)
     }
 }

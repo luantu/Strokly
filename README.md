@@ -8,15 +8,19 @@ Strokly is a macOS utility for **right-button mouse gestures**. Drag with the ri
 ## Features
 
 - **Global capture** — low-level CGEvent tap intercepts right/middle/button4/button5 drags anywhere
-- **Gesture trail overlay** — per-display real-time path drawing at screen saver level
+- **Gesture trail overlay** — per-display real-time GPU-rendered path drawing at screen saver level (pure CAShapeLayer, no CPU draw overhead)
 - **Hybrid recognition** — matches by direction tokens (U/D/L/R/UL/UR/DL/DR) **or** normalized template similarity (configurable 8%–42% tolerance)
+- **Live preview** — shows matched rule name during drag, before mouse release
+- **Direction confirmation** — requires 2 consecutive segments before accepting direction change, filters jitter
 - **App-specific scoping** — per-bundle rules override global rules, enabling per-app gesture sets
 - **Modifier key requirements** — require Ctrl/Opt/Shift/Cmd while gesturing
+- **Configurable min trigger distance** — adjustable 8–80pt slider to avoid accidental right-click triggers
 - **6 action types** — keyboard shortcut (CGEvent key simulation), open URL, open application, shell script (`/bin/zsh`), AppleScript, and 16 built-in system actions
 - **System actions** — window management (maximize/center/fullscreen/minimize via AX API → AppleScript → CGEvent), volume/brightness/media, mission control, app expose, show desktop, lock screen, sleep display, spotlight, force quit
+- **Run as Administrator** — toggle per shell script action, uses AppleScript `with administrator privileges`
 - **Edge scroll** — scroll at screen edges (within 24pt) on any display to trigger actions
 - **Gesture library** — 24 built-in presets (Navigation, Clipboard, Tabs, Applications, Window, Media, System) — browse and add
-- **Conflict detection** — warns when editing a gesture too similar to an existing rule
+- **Conflict detection** — warns when editing a gesture too similar to an existing rule with overlapping scope
 - **Practice mode** — draw in the gesture canvas to test recognition without saving
 - **Blocked apps** — disable gestures for specific applications (games, drawing apps, etc.)
 - **Synthetic click passthrough** — replays a normal right click when movement is too small; uses a marker to avoid re-intercepting its own events
