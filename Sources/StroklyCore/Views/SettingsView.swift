@@ -25,7 +25,7 @@ public struct SettingsView: View {
             // About — pinned to bottom (same top/bottom margin via VStack padding)
             GroupBox {
                 HStack {
-                    LabeledContent("Version", value: "0.9.1")
+                    LabeledContent("Version", value: "0.9.2")
                         .frame(maxWidth: 200)
                     LabeledContent("Bundle ID", value: "com.luantu.Strokly")
                         .textSelection(.enabled)
@@ -38,15 +38,9 @@ public struct SettingsView: View {
                 Label("About", systemImage: "info.circle")
                     .font(.headline)
             }
-
-            Button("Close Settings") {
-                NSApp.keyWindow?.close()
-            }
-            .frame(maxWidth: .infinity)
-            .controlSize(.large)
         }
         .padding(20)
-        .frame(width: 600, height: 480)
+        .frame(minWidth: 620, idealWidth: 620, maxWidth: .infinity, minHeight: 480, idealHeight: 500, maxHeight: .infinity)
         .fileExporter(isPresented: $showExportPanel, document: RulesDocument(rules: ruleStore.rules), contentType: .json) { _ in }
         .fileImporter(isPresented: $showImportPanel, allowedContentTypes: [.json]) { result in
             if case .success(let url) = result {

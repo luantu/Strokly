@@ -5,9 +5,9 @@ public struct ContentView: View {
     @ObservedObject private var store: RuleStore
     @ObservedObject private var engine: GestureEngine
     @ObservedObject private var settings: AppSettingsStore
+    @Environment(\.openWindow) private var openWindow
     @State private var selection: GestureRule.ID?
     @State private var showLibrary = false
-    @State private var showSettings = false
     @State private var showPermission = false
     @State private var permissionCheckedThisSession = false
     @AppStorage("collapsedCategories") private var collapsedCategoriesData: Data = Data()
@@ -60,7 +60,7 @@ public struct ContentView: View {
                 .listStyle(.sidebar)
                 .frame(minWidth: 260)
 
-                SidebarStatusView(engine: engine, onSettings: { showSettings = true })
+                SidebarStatusView(engine: engine, onSettings: { openWindow(id: "settings") })
             }
         } detail: {
             if let selection, let rule = binding(for: selection) {
@@ -108,10 +108,6 @@ public struct ContentView: View {
         }
         .sheet(isPresented: $showLibrary) {
             GestureLibraryView(store: store)
-                .environment(\.locale, settings.locale)
-        }
-        .sheet(isPresented: $showSettings) {
-            SettingsView(settings: settings, ruleStore: store)
                 .environment(\.locale, settings.locale)
         }
         .sheet(isPresented: $showPermission) {

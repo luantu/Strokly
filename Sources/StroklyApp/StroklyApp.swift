@@ -46,10 +46,9 @@ struct StroklyApp: App {
         WindowGroup("Settings", id: "settings") {
             SettingsView(settings: settings, ruleStore: store)
                 .environment(\.locale, settings.locale)
-                .frame(width: 620, height: 500)
         }
         .defaultSize(width: 620, height: 500)
-        .windowResizability(.contentSize)
+        .windowResizability(.contentMinSize)
 
         MenuBarExtra("Strokly", systemImage: "scribble.variable") {
             MenuBarSceneContent(engine: engine, store: store, settings: settings)

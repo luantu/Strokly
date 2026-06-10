@@ -234,7 +234,12 @@ public final class GestureEngine: ObservableObject {
             guard let self else { return }
             self.executor.execute(rule.action, focusPoint: capture.point)
             if rule.showTip {
-                self.tipWindow.show(title: rule.name, detail: rule.action.displaySummary, at: capture.point)
+                var detail = rule.action.displaySummary
+                if let sysAction = rule.action.systemAction,
+                   let value = self.executor.currentValue(for: sysAction) {
+                    detail = "\(detail) · \(value)"
+                }
+                self.tipWindow.show(title: rule.name, detail: detail, at: capture.point)
             }
         }
     }

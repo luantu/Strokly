@@ -30,6 +30,22 @@ public final class ActionExecutor {
         }
     }
 
+    public func currentValue(for action: SystemAction) -> String? {
+        switch action {
+        case .volumeUp, .volumeDown:
+            let script = "output volume of (get volume settings)"
+            var error: NSDictionary?
+            if let result = NSAppleScript(source: script)?.executeAndReturnError(&error) {
+                return "\(result.int32Value)%"
+            }
+            return nil
+        case .brightnessUp, .brightnessDown:
+            return nil
+        default:
+            return nil
+        }
+    }
+
     public func executeSystemAction(_ action: SystemAction) {
         switch action {
         case .maximizeWindow:
@@ -56,12 +72,12 @@ public final class ActionExecutor {
         case .minimizeWindow:
             minimizeFrontWindow()
 
-        // Volume — direct AppleScript (most reliable)
+        // Volume — ±1 per notch
         case .volumeUp:
-            runAppleScript("set volume output volume (output volume of (get volume settings) + 5)")
+            runAppleScript("set volume output volume (output volume of (get volume settings) + 1)")
 
         case .volumeDown:
-            runAppleScript("set volume output volume (output volume of (get volume settings) - 5)")
+            runAppleScript("set volume output volume (output volume of (get volume settings) - 1)")
 
         case .volumeMute:
             runAppleScript("set volume output muted not (output muted of (get volume settings))")
