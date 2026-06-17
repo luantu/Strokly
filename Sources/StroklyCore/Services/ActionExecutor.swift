@@ -4,17 +4,30 @@ import Foundation
 
 @MainActor
 public final class ActionExecutor {
+    private var focusPID: pid_t?
+
     public init() {}
 
     public func execute(_ action: GestureAction, focusPoint: CGPoint? = nil) {
-        if action.focusVisibleWindowBeforeExecution {
-            focusVisibleWindow(at: focusPoint)
+        focusPID = nil
+        let shouldFocus = action.focusVisibleWindowBeforeExecution
+        StroklyLogger.shared.info("execute.begin", [
+            "kind": "\(action.kind)",
+            "focusEnabled": shouldFocus ? "yes" : "no",
+            "hasFocusPoint": focusPoint != nil ? "yes" : "no"
+        ])
+
+        if shouldFocus {
+            focusPID = focusVisibleWindow(at: focusPoint)
+            StroklyLogger.shared.info("execute.focusResult", [
+                "focusPID": focusPID.map { "\($0)" } ?? "nil"
+            ])
         }
 
         switch action.kind {
         case .keyStroke:
             guard let shortcut = action.keyShortcut else { return }
-            send(shortcut)
+            send(shortcut, to: focusPID)
         case .openURL:
             openURL(action.value)
         case .openApplication:
@@ -115,36 +128,63 @@ public final class ActionExecutor {
 
     // MARK: - Window Helpers (via AX API)
 
-    private func focusVisibleWindow(at point: CGPoint?) {
-        let targetPoint = point ?? CGEvent(source: nil)?.location ?? .zero
-        StroklyLogger.shared.debug("action.focusVisibleWindow.begin", [
+    @discardableResult
+    private func focusVisibleWindow(at point: CGPoint?) -> pid_t? {
+        StroklyLogger.shared.info("action.focusVisibleWindow.begin", [
+            "pointProvided": point != nil ? "yes" : "no"
+        ])
+
+        var targetPoint = point ?? CGEvent(source: nil)?.location ?? .zero
+        StroklyLogger.shared.info("action.focusVisibleWindow.targetPoint", [
             "x": String(format: "%.1f", targetPoint.x),
             "y": String(format: "%.1f", targetPoint.y)
         ])
 
-        guard let candidate = visibleWindowCandidate(at: targetPoint) else {
-            StroklyLogger.shared.warning("action.focusVisibleWindow.noCandidate")
-            return
+        var candidate = visibleWindowCandidate(at: targetPoint)
+        StroklyLogger.shared.info("action.focusVisibleWindow.firstPass", [
+            "found": candidate != nil ? "yes" : "no",
+            "pid": candidate.map { "\($0.pid)" } ?? "nil",
+            "owner": candidate?.ownerName ?? "nil"
+        ])
+
+        if candidate == nil {
+            let newPoint = CGEvent(source: nil)?.location ?? targetPoint
+            StroklyLogger.shared.info("action.focusVisibleWindow.retry", [
+                "x": String(format: "%.1f", newPoint.x),
+                "y": String(format: "%.1f", newPoint.y)
+            ])
+            targetPoint = newPoint
+            candidate = visibleWindowCandidate(at: targetPoint)
+            StroklyLogger.shared.info("action.focusVisibleWindow.secondPass", [
+                "found": candidate != nil ? "yes" : "no",
+                "pid": candidate.map { "\($0.pid)" } ?? "nil",
+                "owner": candidate?.ownerName ?? "nil"
+            ])
         }
+
+        guard let candidate else {
+            StroklyLogger.shared.warning("action.focusVisibleWindow.noCandidate")
+            return nil
+        }
+
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        StroklyLogger.shared.info("action.focusVisibleWindow.found", [
+            "pid": "\(candidate.pid)",
+            "owner": candidate.ownerName,
+            "frontmostPID": frontPID.map { "\($0)" } ?? "nil"
+        ])
 
         guard let app = NSRunningApplication(processIdentifier: candidate.pid) else {
             StroklyLogger.shared.warning("action.focusVisibleWindow.noRunningApp", ["pid": "\(candidate.pid)"])
-            return
+            return nil
         }
 
-        app.activate(options: [.activateIgnoringOtherApps])
-        let appRef = AXUIElementCreateApplication(candidate.pid)
-        if let window = axWindow(in: appRef, matching: candidate.bounds) {
-            AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-            AXUIElementSetAttributeValue(appRef, kAXFocusedWindowAttribute as CFString, window)
-            AXUIElementSetAttributeValue(window, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        }
-
-        StroklyLogger.shared.info("action.focusVisibleWindow.done", [
+        StroklyLogger.shared.info("action.focusVisibleWindow.returning", [
             "pid": "\(candidate.pid)",
-            "app": app.localizedName ?? "",
-            "owner": candidate.ownerName
+            "app": app.localizedName ?? ""
         ])
+
+        return candidate.pid
     }
 
     private struct WindowCandidate {
@@ -159,29 +199,85 @@ public final class ActionExecutor {
             return nil
         }
 
-        let currentPID = ProcessInfo.processInfo.processIdentifier
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        StroklyLogger.shared.info("visibleWindowCandidate.scan", [
+            "totalWindows": "\(list.count)",
+            "frontPID": frontPID.map { "\($0)" } ?? "nil"
+        ])
+
+        var nonFrontCandidates: [(WindowCandidate, CGFloat)] = []
+        var frontHasWindowAtPoint = false
+
         for item in list {
             let layer = item[kCGWindowLayer as String] as? Int ?? 0
             guard layer == 0 else { continue }
             let pid = item[kCGWindowOwnerPID as String] as? pid_t ?? 0
-            guard pid != 0, pid != currentPID else { continue }
+            guard pid != 0 else { continue }
             let alpha = item[kCGWindowAlpha as String] as? Double ?? 1
             guard alpha > 0 else { continue }
             guard let boundsDictionary = item[kCGWindowBounds as String] as? [String: Any],
                   let bounds = CGRect(dictionaryRepresentation: boundsDictionary as CFDictionary),
                   bounds.width > 20,
-                  bounds.height > 20,
-                  bounds.contains(point) else {
+                  bounds.height > 20 else {
                 continue
             }
 
-            return WindowCandidate(
-                pid: pid,
-                ownerName: item[kCGWindowOwnerName as String] as? String ?? "",
-                bounds: bounds
-            )
+            let ownerName = item[kCGWindowOwnerName as String] as? String ?? ""
+            let contains = bounds.contains(point)
+
+            StroklyLogger.shared.info("visibleWindowCandidate.window", [
+                "pid": "\(pid)",
+                "owner": ownerName,
+                "contains": contains ? "yes" : "no",
+                "isFront": pid == frontPID ? "yes" : "no",
+                "bounds": "\(Int(bounds.origin.x)),\(Int(bounds.origin.y)) \(Int(bounds.width))x\(Int(bounds.height))"
+            ])
+
+            if pid == frontPID {
+                if contains {
+                    StroklyLogger.shared.info("visibleWindowCandidate.frontWindowHit",
+                        ["pid": "\(pid)", "owner": ownerName])
+                    frontHasWindowAtPoint = true
+                }
+                continue
+            }
+
+            let candidate = WindowCandidate(pid: pid, ownerName: ownerName, bounds: bounds)
+
+            if contains {
+                // If the frontmost app already has a window at this point, user is gesturing on it
+                if frontHasWindowAtPoint {
+                    StroklyLogger.shared.info("visibleWindowCandidate.skippingBehindFront",
+                        ["pid": "\(pid)", "owner": ownerName])
+                    continue
+                }
+                StroklyLogger.shared.info("visibleWindowCandidate.exactMatch",
+                    ["pid": "\(pid)", "owner": ownerName])
+                return candidate
+            }
+
+            let distance = point.distanceSquared(to: bounds)
+            nonFrontCandidates.append((candidate, distance))
         }
 
+        // If the frontmost app has a window under the point, user is gesturing on it — do nothing
+        if frontHasWindowAtPoint {
+            StroklyLogger.shared.info("visibleWindowCandidate.gestureOnFrontmost",
+                ["point": "\(String(format: "%.0f", point.x)),\(String(format: "%.0f", point.y))"])
+            return nil
+        }
+
+        // Otherwise, return nearest non-frontmost window
+        nonFrontCandidates.sort { $0.1 < $1.1 }
+        if let best = nonFrontCandidates.first {
+            StroklyLogger.shared.info("visibleWindowCandidate.nearest",
+                ["pid": "\(best.0.pid)", "owner": best.0.ownerName,
+                 "distance": String(format: "%.1f", sqrt(best.1))])
+            return best.0
+        }
+
+        StroklyLogger.shared.info("visibleWindowCandidate.noneFound")
         return nil
     }
 
@@ -362,7 +458,26 @@ public final class ActionExecutor {
 
     // MARK: - CGEvent Key Simulation
 
-    private func sendKey(code: CGKeyCode, flags: CGEventFlags) {
+    private func sendKey(code: CGKeyCode, flags: CGEventFlags, to pid: pid_t? = nil) {
+        StroklyLogger.shared.info("sendKey", [
+            "keyCode": "\(code)", "flags": "\(flags.rawValue)",
+            "targetPID": pid.map { "\($0)" } ?? "frontmost"
+        ])
+
+        if let pid, pid != ProcessInfo.processInfo.processIdentifier {
+            // Activate the target app once before posting the key event
+            if let app = NSRunningApplication(processIdentifier: pid) {
+                app.activate(options: [.activateIgnoringOtherApps])
+                if let appName = app.localizedName {
+                    let script = "tell application \"\(appName)\" to activate"
+                    var error: NSDictionary?
+                    NSAppleScript(source: script)?.executeAndReturnError(&error)
+                }
+                // Single short spin to let activation settle
+                RunLoop.current.run(mode: .default, before: Date(timeIntervalSinceNow: 0.08))
+            }
+        }
+
         let source = CGEventSource(stateID: .hidSystemState)
         let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)
         let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
@@ -374,9 +489,9 @@ public final class ActionExecutor {
 
     // MARK: - Keyboard Shortcut
 
-    private func send(_ shortcut: KeyboardShortcutSpec) {
+    private func send(_ shortcut: KeyboardShortcutSpec, to pid: pid_t? = nil) {
         guard let keyCode = shortcut.keyCode else { return }
-        sendKey(code: keyCode, flags: shortcut.flags)
+        sendKey(code: keyCode, flags: shortcut.flags, to: pid)
     }
 
     // MARK: - General
@@ -426,5 +541,15 @@ public final class ActionExecutor {
         guard !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         var error: NSDictionary?
         NSAppleScript(source: script)?.executeAndReturnError(&error)
+    }
+}
+
+private extension CGPoint {
+    func distanceSquared(to rect: CGRect) -> CGFloat {
+        let closestX = Swift.max(rect.minX, Swift.min(x, rect.maxX))
+        let closestY = Swift.max(rect.minY, Swift.min(y, rect.maxY))
+        let dx = x - closestX
+        let dy = y - closestY
+        return dx * dx + dy * dy
     }
 }
