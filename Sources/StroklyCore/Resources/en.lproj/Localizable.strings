@@ -83,9 +83,7 @@
 "Trigger" = "Trigger";
 "Gesture" = "Gesture";
 "Use left mouse button to draw gestures in the canvas above." = "Use left mouse button to draw gestures in the canvas above.";
-"Strictness" = "Strictness";
-"Practice Mode" = "Practice Mode";
-"Draw in the canvas above to test recognition." = "Draw in the canvas above to test recognition.";
+"Match Similarity" = "Match Similarity";
 "Modifier Keys" = "Modifier Keys";
 "Hold these keys while gesturing (optional)." = "Hold these keys while gesturing (optional).";
 "Applies To" = "Applies To";

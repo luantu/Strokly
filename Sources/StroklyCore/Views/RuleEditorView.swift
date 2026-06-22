@@ -8,8 +8,6 @@ public struct RuleEditorView: View {
     @ObservedObject private var store: RuleStore
     @State private var gestureError: String?
     @State private var conflictWarning: String?
-    @State private var practiceMode = false
-    @State private var practiceResult: String?
 
     public init(rule: Binding<GestureRule>, engine: GestureEngine, store: RuleStore) {
         self._rule = rule
@@ -42,7 +40,6 @@ public struct RuleEditorView: View {
         .onChange(of: rule.id) { _ in
             gestureError = nil
             conflictWarning = nil
-            practiceResult = nil
         }
     }
 
@@ -124,14 +121,14 @@ public struct RuleEditorView: View {
             }
 
             HStack {
-                Text("Strictness")
+                Text("Match Similarity")
                     .font(.callout)
-                Slider(value: toleranceBinding, in: 0.08...0.42)
-                Text("\(Int(rule.matchTolerance * 100))%")
+                Slider(value: similarityBinding, in: 58...92, step: 1)
+                Text("≥\(Int(similarityBinding.wrappedValue))%")
                     .monospacedDigit()
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 36, alignment: .trailing)
+                    .frame(width: 42, alignment: .trailing)
             }
 
             if let gestureError {
@@ -143,18 +140,6 @@ public struct RuleEditorView: View {
                 Label(conflictWarning, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption)
                     .foregroundStyle(.orange)
-            }
-
-            Toggle("Practice Mode", isOn: $practiceMode)
-            if practiceMode {
-                Text("Draw in the canvas above to test recognition.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let practiceResult {
-                    Label(practiceResult, systemImage: "checkmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                }
             }
         } header: {
             Label("Gesture", systemImage: "hand.draw")
@@ -295,8 +280,11 @@ public struct RuleEditorView: View {
         })
     }
 
-    private var toleranceBinding: Binding<Double> {
-        Binding(get: { rule.matchTolerance }, set: { rule.matchTolerance = $0 })
+    private var similarityBinding: Binding<Double> {
+        Binding(
+            get: { (1 - rule.matchTolerance) * 100 },
+            set: { rule.matchTolerance = 1 - ($0 / 100) }
+        )
     }
 
     private var systemActionBinding: Binding<SystemAction?> {

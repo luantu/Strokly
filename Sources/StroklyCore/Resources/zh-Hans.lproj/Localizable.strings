@@ -85,9 +85,7 @@
 "Trigger" = "触发方式";
 "Gesture" = "手势";
 "Use left mouse button to draw gestures in the canvas above." = "使用左键在上方画布中绘制手势。";
-"Strictness" = "严格度";
-"Practice Mode" = "练习模式";
-"Draw in the canvas above to test recognition." = "在上方画布中绘制以测试识别效果。";
+"Match Similarity" = "匹配相似度";
 "Modifier Keys" = "修饰键";
 "Hold these keys while gesturing (optional)." = "手势时按住这些键（可选）。";
 "Applies To" = "适用范围";
