@@ -1,6 +1,8 @@
 import Foundation
 
 public enum RuleMatcher {
+    public static let noisePenaltyPerReset: Double = 0.02
+
     public struct TemplateMatch: Equatable {
         public var rule: GestureRule
         public var score: Double
@@ -37,6 +39,7 @@ public enum RuleMatcher {
         triggerButton: TriggerButton = .rightMouse,
         activeModifiers: [KeyboardModifier] = [],
         bundleIdentifier: String?,
+        noiseCount: Int = 0,
         rules: [GestureRule]
     ) -> GestureRule? {
         matchWithScore(
@@ -45,6 +48,7 @@ public enum RuleMatcher {
             triggerButton: triggerButton,
             activeModifiers: activeModifiers,
             bundleIdentifier: bundleIdentifier,
+            noiseCount: noiseCount,
             rules: rules
         )?.rule
     }
@@ -55,6 +59,7 @@ public enum RuleMatcher {
         triggerButton: TriggerButton = .rightMouse,
         activeModifiers: [KeyboardModifier] = [],
         bundleIdentifier: String?,
+        noiseCount: Int = 0,
         rules: [GestureRule]
     ) -> TemplateMatch? {
         let eligibleRules = rules.filter { rule in
@@ -64,22 +69,28 @@ public enum RuleMatcher {
                 matchesModifiers(required: rule.modifierRequirements, active: activeModifiers)
         }
 
-        let appMatches = scoredMatches(
-            template: template,
-            rules: eligibleRules.filter { rule in
-                guard let bundleIdentifier else {
-                    return false
-                }
-                return rule.scope.kind == .application &&
-                    rule.scope.bundleIdentifier == bundleIdentifier
-            }
-        )
-        if let best = appMatches.first {
+        let appRules = eligibleRules.filter { rule in
+            guard let bundleIdentifier else { return false }
+            return rule.scope.kind == .application &&
+                rule.scope.bundleIdentifier == bundleIdentifier
+        }
+
+        // 1. App-scoped: normal tolerance match
+        if let best = scoredMatches(template: template, signature: signature, noiseCount: noiseCount, toleranceScale: 1.0, rules: appRules).first {
             return best
         }
 
+        // 2. App-scoped: relaxed tolerance for exact signature match (prevent global from stealing)
+        if let best = scoredMatches(template: template, signature: signature, noiseCount: noiseCount, toleranceScale: 1.5, requireExactSignature: true, rules: appRules).first {
+            return best
+        }
+
+        // 3. Global: normal tolerance match
         return scoredMatches(
             template: template,
+            signature: signature,
+            noiseCount: noiseCount,
+            toleranceScale: 1.0,
             rules: eligibleRules.filter { $0.scope.kind == .global }
         ).first
     }
@@ -118,13 +129,24 @@ public enum RuleMatcher {
         return requiredSet.isSubset(of: activeSet)
     }
 
-    private static func scoredMatches(template: GestureTemplate, rules: [GestureRule]) -> [TemplateMatch] {
+    private static func scoredMatches(
+        template: GestureTemplate,
+        signature: GestureSignature,
+        noiseCount: Int,
+        toleranceScale: Double = 1.0,
+        requireExactSignature: Bool = false,
+        rules: [GestureRule]
+    ) -> [TemplateMatch] {
         rules.compactMap { rule -> TemplateMatch? in
-            let score = GestureTemplateMatcher.distance(template, rule.template)
-            guard score <= rule.matchTolerance else {
+            if requireExactSignature && rule.signature != signature {
                 return nil
             }
-            return TemplateMatch(rule: rule, score: score)
+            let rawDistance = GestureTemplateMatcher.distance(template, rule.template)
+            let adjustedScore = min(rawDistance + Double(noiseCount) * noisePenaltyPerReset, 3.0)
+            guard adjustedScore <= rule.matchTolerance * toleranceScale else {
+                return nil
+            }
+            return TemplateMatch(rule: rule, score: adjustedScore)
         }
         .sorted { left, right in
             left.score < right.score

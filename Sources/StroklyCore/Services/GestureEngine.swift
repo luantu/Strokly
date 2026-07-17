@@ -22,6 +22,7 @@ public final class GestureEngine: ObservableObject {
     private var previewRecognizer = GestureRecognizer()
 
     private var pendingMatch: (rule: GestureRule, capture: GestureCapture)?
+    private var pendingMatchRuleName: String?
     private var hasReachedMinDistance = false
 
     public init(ruleStore: RuleStore, settingsStore: AppSettingsStore) {
@@ -51,6 +52,7 @@ public final class GestureEngine: ObservableObject {
             guard !self.isFrontmostAppBlocked() else {
                 self.overlay.hide()
                 self.pendingMatch = nil
+                self.pendingMatchRuleName = nil
                 return
             }
 
@@ -85,6 +87,7 @@ public final class GestureEngine: ObservableObject {
     private func updatePreview(points: [CGPoint]) {
         guard points.count > 1 else {
             pendingMatch = nil
+            pendingMatchRuleName = nil
             tipWindow.hide()
             return
         }
@@ -92,39 +95,47 @@ public final class GestureEngine: ObservableObject {
         let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         let activeModifiers = currentModifiers()
 
-        guard let signature = previewRecognizer.recognize(points),
-              signature.directions.count >= 1 else {
+        guard let result = previewRecognizer.recognize(points),
+              result.signature.directions.count >= 1 else {
             pendingMatch = nil
+            pendingMatchRuleName = nil
             tipWindow.hide()
             return
         }
 
         let triggerButton = monitor.activeButton
+        let template = GestureTemplate(points: points)
 
-        guard let match = RuleMatcher.match(
-            signature: signature,
+        guard let match = RuleMatcher.matchWithScore(
+            template: template,
+            signature: result.signature,
             triggerButton: triggerButton,
             activeModifiers: activeModifiers,
             bundleIdentifier: bundleIdentifier,
+            noiseCount: result.noiseCount,
             rules: ruleStore.rules
         ) else {
             pendingMatch = nil
+            pendingMatchRuleName = nil
             tipWindow.hide()
             return
         }
 
-        pendingMatch = (match, GestureCapture(
-            signature: signature,
-            template: GestureTemplate(points: points),
+        let matchedRule = match.rule
+        pendingMatch = (matchedRule, GestureCapture(
+            signature: result.signature,
+            template: template,
             points: points,
             startedAt: Date(),
             endedAt: Date(),
             triggerButton: triggerButton,
-            activeModifiers: activeModifiers
+            activeModifiers: activeModifiers,
+            noiseCount: result.noiseCount
         ))
+        pendingMatchRuleName = matchedRule.name
 
-        if match.showTip, let last = points.last {
-            tipWindow.show(title: match.name, detail: match.action.displaySummary, at: last)
+        if matchedRule.showTip, let last = points.last {
+            tipWindow.show(title: matchedRule.name, detail: matchedRule.action.displaySummary, at: last)
         }
     }
 
@@ -250,6 +261,7 @@ public final class GestureEngine: ObservableObject {
         let bundleIdentifier = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
 
         let usePendingTip = pendingMatch != nil
+        let previewRuleName = pendingMatchRuleName
 
         guard let match = RuleMatcher.matchWithScore(
             template: capture.template,
@@ -257,6 +269,7 @@ public final class GestureEngine: ObservableObject {
             triggerButton: capture.triggerButton,
             activeModifiers: capture.activeModifiers,
             bundleIdentifier: bundleIdentifier,
+            noiseCount: capture.noiseCount,
             rules: ruleStore.rules
         ) else {
             lastAction = "No matching rule"
@@ -285,12 +298,14 @@ public final class GestureEngine: ObservableObject {
             guard let self else { return }
             self.executor.execute(rule.action, focusPoint: focusPoint)
             if rule.showTip {
-                if usePendingTip {
-                    self.tipWindow.updateDetail("\(rule.action.displaySummary) · match \(Int((1 - match.score).clamped(to: 0...1) * 100))%")
+                let matchPercent = Int(min(100, max(0, (0.30 - match.score) / 0.25 * 100)))
+                let detail = "\(rule.action.displaySummary) · match \(matchPercent)%"
+                if usePendingTip && previewRuleName == rule.name {
+                    self.tipWindow.updateDetail(detail)
                 } else {
                     self.tipWindow.show(
                         title: rule.name,
-                        detail: "\(rule.action.displaySummary) · match \(Int((1 - match.score).clamped(to: 0...1) * 100))%",
+                        detail: detail,
                         at: focusPoint
                     )
                 }

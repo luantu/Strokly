@@ -10,6 +10,7 @@ public struct GestureCapture: Equatable {
     public var endedAt: Date
     public var triggerButton: TriggerButton
     public var activeModifiers: [KeyboardModifier]
+    public var noiseCount: Int
 }
 
 public enum GestureEventMonitorError: Error, LocalizedError {
@@ -282,7 +283,8 @@ public private(set) var activeButton: TriggerButton = .rightMouse
                 startedAt: captureStartedAt,
                 endedAt: Date(),
                 triggerButton: button,
-                activeModifiers: modifiers
+                activeModifiers: modifiers,
+                noiseCount: candidate.noiseCount
             )
             DispatchQueue.main.async { [onTraceChanged, onGesture] in
                 onTraceChanged([])

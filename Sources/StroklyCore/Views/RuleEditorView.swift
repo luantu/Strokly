@@ -101,7 +101,7 @@ public struct RuleEditorView: View {
         Section {
             GestureTemplateCanvasView(template: $rule.template) { points, _ in
                 let recognizer = GestureRecognizer(minSegmentLength: 18)
-                rule.signature = recognizer.recognize(points) ?? GestureSignature([])
+                rule.signature = recognizer.recognize(points)?.signature ?? GestureSignature([])
                 gestureError = nil
                 checkConflicts()
             }
@@ -123,7 +123,7 @@ public struct RuleEditorView: View {
             HStack {
                 Text("Match Similarity")
                     .font(.callout)
-                Slider(value: similarityBinding, in: 58...92, step: 1)
+                Slider(value: similarityBinding, in: 10...92, step: 1)
                 Text("≥\(Int(similarityBinding.wrappedValue))%")
                     .monospacedDigit()
                     .font(.caption)
@@ -282,8 +282,8 @@ public struct RuleEditorView: View {
 
     private var similarityBinding: Binding<Double> {
         Binding(
-            get: { (1 - rule.matchTolerance) * 100 },
-            set: { rule.matchTolerance = 1 - ($0 / 100) }
+            get: { (0.30 - rule.matchTolerance) / 0.25 * 100 },
+            set: { rule.matchTolerance = 0.30 - ($0 / 100) * 0.25 }
         )
     }
 

@@ -59,6 +59,8 @@ public struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle("Launch at Login", isOn: $settings.launchAtLogin)
                     Toggle("Auto-start Monitoring", isOn: $settings.autoStartMonitoring)
+                    Toggle("Silent Launch", isOn: $settings.silentLaunch)
+                        .help("Start without showing the main window if accessibility permission is granted.")
                     Divider()
                     Picker("Language", selection: $settings.language) {
                         ForEach(AppLanguage.allCases) { Text($0.displayName).tag($0) }

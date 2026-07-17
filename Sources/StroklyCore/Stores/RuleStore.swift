@@ -81,6 +81,7 @@ public final class RuleStore: ObservableObject {
             let data = try Data(contentsOf: storageURL)
             rules = try JSONDecoder.stroklyDecoder.decode([GestureRule].self, from: data)
             migrateMissingEdgeScrollRulesIfNeeded()
+            migrateOldToleranceIfNeeded()
         } catch {
             rules = GestureRule.defaultRules
         }
@@ -96,6 +97,18 @@ public final class RuleStore: ObservableObject {
         rules.append(contentsOf: edgeRules)
         StroklyLogger.shared.info("rules.migrate.edgeScrollDefaults", ["count": "\(edgeRules.count)"])
         save()
+    }
+
+    private func migrateOldToleranceIfNeeded() {
+        // The (x,y) DTW algorithm uses a different distance scale.
+        // Values > 0.3 are from the old turning-angle or $1 scale and need migration.
+        let needsSave = rules.contains { $0.matchTolerance > 0.3 || $0.matchTolerance < 0.02 }
+        if needsSave {
+            StroklyLogger.shared.info("rules.migrate.tolerance", [
+                "count": "\(rules.filter { $0.matchTolerance > 0.3 || $0.matchTolerance < 0.02 }.count)"
+            ])
+            save()
+        }
     }
 
     private static func defaultStorageURL() -> URL {

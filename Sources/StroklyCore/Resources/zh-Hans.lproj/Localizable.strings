@@ -119,6 +119,7 @@
 "Startup" = "启动";
 "Launch at Login" = "登录时启动";
 "Auto-start Monitoring" = "自动开始监听";
+"Silent Launch" = "静默启动";
 "Min Trigger Distance" = "最小触发距离";
 "larger = less accidental triggers" = "越大 = 越不易误触";
 "Language" = "语言";

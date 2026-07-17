@@ -89,7 +89,7 @@ public struct GestureRule: Codable, Identifiable, Hashable, Equatable {
         action: GestureAction,
         isEnabled: Bool = true,
         showTip: Bool = true,
-        matchTolerance: Double = 0.22
+        matchTolerance: Double = 0.15
     ) {
         self.id = id
         self.name = name
@@ -120,7 +120,7 @@ public struct GestureRule: Codable, Identifiable, Hashable, Equatable {
         action: GestureAction,
         isEnabled: Bool = true,
         showTip: Bool = true,
-        matchTolerance: Double = 0.22
+        matchTolerance: Double = 0.15
     ) {
         self.id = id
         self.name = name
@@ -158,7 +158,15 @@ public struct GestureRule: Codable, Identifiable, Hashable, Equatable {
         action = try c.decode(GestureAction.self, forKey: .action)
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         showTip = try c.decodeIfPresent(Bool.self, forKey: .showTip) ?? true
-        matchTolerance = try c.decodeIfPresent(Double.self, forKey: .matchTolerance) ?? 0.22
+        matchTolerance = try c.decodeIfPresent(Double.self, forKey: .matchTolerance) ?? 0.15
+        // Migrate from turning-angle scale (0.28–1.47) to (x,y) coordinate scale
+        if matchTolerance > 0.3 {
+            matchTolerance *= 0.15
+        }
+        // Migrate from original $1 recognizer scale (0.08–0.42)
+        if matchTolerance < 0.02 {
+            matchTolerance = max(matchTolerance, 0.05)
+        }
     }
 
     public func encode(to encoder: Encoder) throws {

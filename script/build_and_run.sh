@@ -6,8 +6,8 @@ MODE="${1:-run}"
 APP_NAME="Strokly"
 BUNDLE_ID="com.luantu.Strokly"
 MIN_SYSTEM_VERSION="13.0"
-APP_VERSION="0.9.3"
-APP_BUILD="6"
+APP_VERSION="0.9.4"
+APP_BUILD="7"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist"
@@ -96,6 +96,15 @@ copy_localization_resources() {
       rm -rf "$resources_dir/$name"
       ditto --norsrc --noextattr "$lproj" "$resources_dir/$name"
     done
+  done
+
+  # Also copy lproj placed directly in the build dir (SwiftPM may place them
+  # alongside the executable instead of inside a sidecar bundle).
+  find "$build_dir" -maxdepth 1 -type d -name "*.lproj" | while read -r lproj; do
+    local name
+    name="$(basename "$lproj")"
+    rm -rf "$resources_dir/$name"
+    ditto --norsrc --noextattr "$lproj" "$resources_dir/$name"
   done
 
   # SwiftPM normalizes zh-Hans.lproj to zh-hans.lproj on disk. Keep both names
@@ -220,7 +229,8 @@ package_dmg() {
 }
 
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  :
+  # /usr/bin/open -n "$APP_BUNDLE"
 }
 
 refresh_app_registration() {

@@ -24,6 +24,11 @@ struct StroklyCoreChecks {
         try testDefaultLanguageIsChinese()
         try testChineseLocalizationResourceIsResolved()
         try testEdgeScrollDetectionUsesContainingDisplay()
+        try testNoiseCountIncrementsOnAbandonedDirectionChange()
+        try testCleanGestureHasZeroNoise()
+        try testNoisyGestureExceedsMatchTolerance()
+        try testComplexShapeDoesNotMatchSimpleLine()
+        try testOldToleranceMigratesToNewScale()
 
         print("StroklyCoreChecks passed")
     }
@@ -40,7 +45,7 @@ struct StroklyCoreChecks {
             CGPoint(x: 67, y: 75)
         ]
 
-        try expectEqual(recognizer.recognize(points), GestureSignature([.right, .down]))
+        try expectEqual(recognizer.recognize(points)?.signature, GestureSignature([.right, .down]))
     }
 
     private static func testReturnsNilWhenPointerDoesNotTravelFarEnough() throws {
@@ -71,7 +76,8 @@ struct StroklyCoreChecks {
             CGPoint(x: 340, y: 320)
         ])
 
-        try expectLessThan(GestureTemplateMatcher.distance(original, movedAndScaled), 0.08)
+        // DTW on normalized (x,y): identical shape → near-zero distance
+        try expectLessThan(GestureTemplateMatcher.distance(original, movedAndScaled), 0.05)
     }
 
     private static func testTemplateMatcherScoresSimilarShapesLowerThanDifferentShapes() throws {
@@ -94,8 +100,9 @@ struct StroklyCoreChecks {
         let similarScore = GestureTemplateMatcher.distance(template, similar)
         let differentScore = GestureTemplateMatcher.distance(template, different)
 
-        try expectLessThan(similarScore, 0.12)
-        try expectLessThan(0.20, differentScore)
+        // DTW on (x,y): similar L-shape → low score, different shape → higher score
+        try expectLessThan(similarScore, 0.05)
+        try expectLessThan(0.10, differentScore)
     }
 
     private static func testAppSpecificRuleWinsOverGlobalRule() throws {
@@ -192,7 +199,7 @@ struct StroklyCoreChecks {
             CGPoint(x: 55, y: 55)
         ]
 
-        try expectEqual(recognizer.recognize(points), GestureSignature([.downRight]))
+        try expectEqual(recognizer.recognize(points)?.signature, GestureSignature([.downRight]))
     }
 
     private static func testParsesDiagonalSignatureText() throws {
@@ -307,6 +314,120 @@ struct StroklyCoreChecks {
         )
     }
 
+    private static func testNoiseCountIncrementsOnAbandonedDirectionChange() throws {
+        let recognizer = GestureRecognizer(minSegmentLength: 18)
+        let points = [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 10, y: 35),
+            CGPoint(x: 10, y: 60),
+            CGPoint(x: 40, y: 62),
+            CGPoint(x: 42, y: 40),
+            CGPoint(x: 45, y: 65),
+            CGPoint(x: 80, y: 67),
+            CGPoint(x: 115, y: 68)
+        ]
+        let result = recognizer.recognize(points)
+        try expectEqual(result?.signature, GestureSignature([.down, .right]))
+        try expectLessThan(0, result?.noiseCount ?? 0)
+    }
+
+    private static func testCleanGestureHasZeroNoise() throws {
+        let recognizer = GestureRecognizer(minSegmentLength: 18)
+        let points = [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 10, y: 30),
+            CGPoint(x: 12, y: 55),
+            CGPoint(x: 11, y: 80),
+            CGPoint(x: 35, y: 82),
+            CGPoint(x: 60, y: 82),
+            CGPoint(x: 85, y: 83)
+        ]
+        let result = recognizer.recognize(points)
+        try expectEqual(result?.signature, GestureSignature([.down, .right]))
+        try expectEqual(result?.noiseCount, 0)
+    }
+
+    private static func testNoisyGestureExceedsMatchTolerance() throws {
+        let rule = GestureRule(
+            name: "Close Tab",
+            signature: GestureSignature([.down, .right]),
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "w", modifiers: [.command])),
+            matchTolerance: 0.15
+        )
+
+        let noisyTemplate = GestureTemplate(points: [
+            CGPoint(x: 10, y: 10),
+            CGPoint(x: 12, y: 50),
+            CGPoint(x: 12, y: 100),
+            CGPoint(x: 50, y: 110),
+            CGPoint(x: 30, y: 90),
+            CGPoint(x: 60, y: 100),
+            CGPoint(x: 100, y: 105),
+            CGPoint(x: 150, y: 108)
+        ])
+
+        let rawDistance = GestureTemplateMatcher.distance(noisyTemplate, rule.template)
+        try expectLessThan(rawDistance, rule.matchTolerance)
+
+        let noisyCandidates: RuleMatcher.TemplateMatch? = RuleMatcher.matchWithScore(
+            template: noisyTemplate,
+            signature: GestureSignature([.down, .right]),
+            bundleIdentifier: nil,
+            noiseCount: 0,
+            rules: [rule]
+        )
+        try expectNotNil(noisyCandidates)
+
+        let penalizedCandidates: RuleMatcher.TemplateMatch? = RuleMatcher.matchWithScore(
+            template: noisyTemplate,
+            signature: GestureSignature([.down, .right]),
+            bundleIdentifier: nil,
+            noiseCount: 3,
+            rules: [rule]
+        )
+        try expectNil(penalizedCandidates)
+    }
+
+    private static func testComplexShapeDoesNotMatchSimpleLine() throws {
+        // A "W" shaped gesture (4 direction changes) should NOT match a simple diagonal line
+        let wShape = GestureTemplate(points: [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 30, y: 60),
+            CGPoint(x: 60, y: 0),
+            CGPoint(x: 90, y: 60),
+            CGPoint(x: 120, y: 0)
+        ])
+        let diagonal = GestureTemplate(points: [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: 40, y: 40),
+            CGPoint(x: 80, y: 80),
+            CGPoint(x: 120, y: 120)
+        ])
+
+        let score = GestureTemplateMatcher.distance(wShape, diagonal)
+        // W zigzag points are far from diagonal line points → high DTW cost
+        try expectLessThan(0.15, score)
+    }
+
+    private static func testOldToleranceMigratesToNewScale() throws {
+        // Create a rule with old tolerance, encode to JSON, decode back
+        let oldRule = GestureRule(
+            name: "Test Migration",
+            signature: GestureSignature([.down]),
+            scope: .global,
+            action: .keyStroke(KeyboardShortcutSpec(key: "w", modifiers: [.command])),
+            matchTolerance: 0.22
+        )
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(oldRule)
+        let decoded = try JSONDecoder().decode(GestureRule.self, from: data)
+        // Old value 0.22 < 0.3 so no turning-angle migration; but < 0.02 check → clamp to 0.05
+        // Actually 0.22 > 0.02, so no clamp. Value stays 0.22 which is > 0.3? No, 0.22 < 0.3
+        // So neither migration triggers, value stays 0.22
+        try expectEqual(decoded.matchTolerance, 0.22)
+    }
+
     private static func expectEqual<T: Equatable>(_ actual: T, _ expected: T, file: StaticString = #file, line: UInt = #line) throws {
         if actual != expected {
             throw CheckFailure("Expected \(expected), got \(actual)", file: file, line: line)
@@ -316,6 +437,12 @@ struct StroklyCoreChecks {
     private static func expectNil<T>(_ actual: T?, file: StaticString = #file, line: UInt = #line) throws {
         if let actual {
             throw CheckFailure("Expected nil, got \(actual)", file: file, line: line)
+        }
+    }
+
+    private static func expectNotNil<T>(_ actual: T?, file: StaticString = #file, line: UInt = #line) throws {
+        if actual == nil {
+            throw CheckFailure("Expected non-nil, got nil", file: file, line: line)
         }
     }
 

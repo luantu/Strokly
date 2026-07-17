@@ -405,18 +405,22 @@ public final class ActionExecutor {
               let window = windowRef else { return }
         let win = window as! AXUIElement
 
-        // Strategy 1: AX API — set position then size
-        var origin = frame.origin
+        // Set the entire frame atomically via AX frame attribute
+        var cgFrame = frame
+        if let frameVal = AXValueCreate(.cgRect, &cgFrame) {
+            let result = AXUIElementSetAttributeValue(win, "AXFrame" as CFString, frameVal)
+            if result == .success { return }
+        }
+
+        // Fallback: set size first, then position (order matters for some apps)
         var size = frame.size
-        var posOk = false
-        var sizeOk = false
-        if let posVal = AXValueCreate(.cgPoint, &origin) {
-            posOk = AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, posVal) == .success
-        }
         if let sizeVal = AXValueCreate(.cgSize, &size) {
-            sizeOk = AXUIElementSetAttributeValue(win, kAXSizeAttribute as CFString, sizeVal) == .success
+            AXUIElementSetAttributeValue(win, kAXSizeAttribute as CFString, sizeVal)
         }
-        if posOk && sizeOk { return }
+        var origin = frame.origin
+        if let posVal = AXValueCreate(.cgPoint, &origin) {
+            AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, posVal)
+        }
 
         // Strategy 2: AppleScript via System Events
         let screen = NSScreen.main ?? NSScreen.screens[0]
@@ -427,8 +431,8 @@ public final class ActionExecutor {
             tell frontApp
                 if (count of windows) > 0 then
                     set frontWindow to front window
-                    set position of frontWindow to {\(Int(sf.origin.x)), \(Int(sf.origin.y))}
                     set size of frontWindow to {\(Int(sf.width)), \(Int(sf.height))}
+                    set position of frontWindow to {\(Int(sf.origin.x)), \(Int(sf.origin.y))}
                 end if
             end tell
         end tell

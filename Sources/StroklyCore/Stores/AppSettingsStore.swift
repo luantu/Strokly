@@ -39,6 +39,9 @@ public final class AppSettingsStore: ObservableObject {
     @Published public var autoStartMonitoring: Bool {
         didSet { save() }
     }
+    @Published public var silentLaunch: Bool {
+        didSet { save() }
+    }
     @Published public var language: AppLanguage {
         didSet { save(); applyLanguage() }
     }
@@ -63,6 +66,7 @@ public final class AppSettingsStore: ObservableObject {
         self.defaults = defaults
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.autoStartMonitoring = defaults.object(forKey: "autoStartMonitoring") as? Bool ?? true
+        self.silentLaunch = defaults.bool(forKey: "silentLaunch")
         self.language = AppLanguage(rawValue: defaults.string(forKey: "language") ?? "") ?? .zhHans
         self.blockedAppBundleIDs = defaults.stringArray(forKey: "blockedAppBundleIDs") ?? []
         self.logLevel = StroklyLogLevel(rawValue: defaults.string(forKey: "logLevel") ?? "") ?? .info
@@ -83,6 +87,7 @@ public final class AppSettingsStore: ObservableObject {
     private func save() {
         defaults.set(launchAtLogin, forKey: "launchAtLogin")
         defaults.set(autoStartMonitoring, forKey: "autoStartMonitoring")
+        defaults.set(silentLaunch, forKey: "silentLaunch")
         defaults.set(language.rawValue, forKey: "language")
         defaults.set(logLevel.rawValue, forKey: "logLevel")
         defaults.set(fileLoggingEnabled, forKey: "fileLoggingEnabled")

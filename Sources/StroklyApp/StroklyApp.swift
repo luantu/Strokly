@@ -23,6 +23,11 @@ struct StroklyApp: App {
                 sharedEngine.start()
             }
         }
+
+        // Handle silent start notification (when main window is not shown)
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("StroklySilentStart"), object: nil, queue: .main) { _ in
+            sharedEngine.start()
+        }
     }
 
     var body: some Scene {
@@ -104,16 +109,30 @@ private final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Silent launch: if permission is granted, stay in menu bar only
+        let defaults = UserDefaults(suiteName: "com.luantu.Strokly") ?? .standard
+        let silentLaunch = defaults.bool(forKey: "silentLaunch")
+        let autoStart = defaults.object(forKey: "autoStartMonitoring") as? Bool ?? true
+        let hasPermission = AccessibilityPermissionService.isTrusted
+
+        if silentLaunch && hasPermission {
+            // Stay accessory (menu bar only), don't show main window
+            NSApp.setActivationPolicy(.accessory)
+            if autoStart {
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: NSNotification.Name("StroklySilentStart"), object: nil)
+                }
+            }
+            return
+        }
+
         // Show the main window so the user sees the app is running.
-        // The window's onAppear will switch to .regular; we set .accessory
-        // as baseline so the menu-bar-only lifecycle works after closing.
         DispatchQueue.main.async {
             if let win = NSApp.windows.first(where: { $0.title == "Strokly" || $0.identifier?.rawValue == "main" }) {
                 win.makeKeyAndOrderFront(nil)
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate(ignoringOtherApps: true)
             } else {
-                // WindowGroup may not have created the window yet — post again
                 DispatchQueue.main.async {
                     if let win = NSApp.windows.first(where: { $0.title == "Strokly" || $0.identifier?.rawValue == "main" }) {
                         win.makeKeyAndOrderFront(nil)

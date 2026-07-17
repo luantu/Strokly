@@ -5,6 +5,7 @@ public struct GestureCandidate: Equatable {
     public var signature: GestureSignature
     public var template: GestureTemplate
     public var points: [CGPoint]
+    public var noiseCount: Int
 }
 
 public struct GestureRecognizer {
@@ -18,18 +19,19 @@ public struct GestureRecognizer {
 
     public func analyze(_ points: [CGPoint]) -> GestureCandidate? {
         guard pathLength(points) >= minPathLength,
-              let signature = recognize(points) else {
+              let result = recognize(points) else {
             return nil
         }
 
         return GestureCandidate(
-            signature: signature,
+            signature: result.signature,
             template: GestureTemplate(points: points),
-            points: points
+            points: points,
+            noiseCount: result.noiseCount
         )
     }
 
-    public func recognize(_ points: [CGPoint]) -> GestureSignature? {
+    public func recognize(_ points: [CGPoint]) -> (signature: GestureSignature, noiseCount: Int)? {
         guard points.count > 1 else {
             return nil
         }
@@ -39,6 +41,7 @@ public struct GestureRecognizer {
         var lastDirection: GestureDirection?
         var pendingDirection: GestureDirection?
         var pendingCount = 0
+        var noiseResets = 0
 
         for point in points.dropFirst() {
             let dx = point.x - anchor.x
@@ -71,6 +74,9 @@ public struct GestureRecognizer {
                     pendingCount = 0
                 }
             } else {
+                if pendingDirection != nil {
+                    noiseResets += 1
+                }
                 pendingDirection = direction
                 pendingCount = 1
             }
@@ -84,7 +90,7 @@ public struct GestureRecognizer {
             return nil
         }
 
-        return GestureSignature(directions)
+        return (GestureSignature(directions), noiseResets)
     }
 
     private func pathLength(_ points: [CGPoint]) -> CGFloat {

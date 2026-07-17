@@ -171,13 +171,24 @@ public enum GestureTemplateMatcher {
     public static func distance(_ first: GestureTemplate, _ second: GestureTemplate) -> Double {
         let left = first.cgPoints
         let right = second.cgPoints
-        guard left.count == right.count, !left.isEmpty else {
+        guard !left.isEmpty, !right.isEmpty else {
             return .greatestFiniteMagnitude
         }
-
-        let total = zip(left, right).reduce(Double(0)) { partial, pair in
-            partial + Double(hypot(pair.1.x - pair.0.x, pair.1.y - pair.0.y))
+        let n = left.count
+        let m = right.count
+        var prev = Array(repeating: Double.infinity, count: m + 1)
+        var curr = Array(repeating: Double.infinity, count: m + 1)
+        prev[0] = 0
+        for i in 1...n {
+            curr[0] = .infinity
+            for j in 1...m {
+                let dx = Double(right[j - 1].x - left[i - 1].x)
+                let dy = Double(right[j - 1].y - left[i - 1].y)
+                let cost = (dx * dx + dy * dy).squareRoot()
+                curr[j] = cost + min(prev[j], curr[j - 1], prev[j - 1])
+            }
+            swap(&prev, &curr)
         }
-        return total / Double(left.count)
+        return prev[m] / Double(max(n, m))
     }
 }
